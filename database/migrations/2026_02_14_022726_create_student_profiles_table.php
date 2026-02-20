@@ -14,12 +14,11 @@ return new class extends Migration
         Schema::create('student_profiles', function (Blueprint $table) {
             $table->foreignId('user_id')->primary()->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('department_id')->constrained('departments')->restrictOnDelete()->cascadeOnUpdate();
-            $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
+            $table->unsignedTinyInteger('level');
             $table->decimal('gpa', 3, 2)->nullable();
             $table->timestamps();
 
             $table->index(['department_id']);
-            $table->index(['academic_year_id']);
         });
     }
 
