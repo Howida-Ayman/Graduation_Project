@@ -15,8 +15,9 @@ Route::middleware('auth:sanctum')->group(function(){
 Route::post('logout',[AuthController::class,'logout'])->name('logout');
 //import & export users
 Route::middleware('admin')->group(function(){
-Route::post('doctors/import',[UserController::class,'ImportDoctors'])->name('doctors.import');
 Route::get('doctors',[UserController::class,'all'])->name('doctors.all');
+Route::post('doctors/import',[UserController::class,'ImportDoctors'])->name('doctors.import');
+Route::get('doctors/export',[UserController::class,'ExportDoctors'])->name('doctors.export');
 });
 
 
