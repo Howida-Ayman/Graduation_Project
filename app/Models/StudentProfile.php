@@ -16,5 +16,8 @@ class StudentProfile extends Model
     protected $casts = [
     'level' => \App\StudentLevel::class,
 ];
-
+    public Function user()
+    {
+        return $this->hasMany(User::class);
+    }
 }

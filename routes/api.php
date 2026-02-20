@@ -16,6 +16,7 @@ Route::post('logout',[AuthController::class,'logout'])->name('logout');
 //import & export users
 Route::middleware('admin')->group(function(){
 Route::post('doctors/import',[UserController::class,'ImportDoctors'])->name('doctors.import');
+Route::get('doctors',[UserController::class,'all'])->name('doctors.all');
 });
 
 

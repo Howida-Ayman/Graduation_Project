@@ -11,4 +11,14 @@ class Department extends Model
         'name',
         'is_active'
     ];
+    public function staffProfiles()
+{
+    return $this->hasMany(StaffProfile::class);
+}
+public function studentProfiles()
+{
+    return $this->hasMany(StudentProfile::class);
+}
+
+
 }

@@ -27,14 +27,12 @@ class AuthController extends Controller
                     'phone'=>$user->phone
                 ];
                 return response()->json([
-                    'status'=>true,
                     'message'=>'Login Successful',
                     'user'=>$data,
                     'token'=>$token],200);
             }
         else{
             return response()->json([
-            'status'=>false,
             'message'=>'Invalid credentials',
             ],401);
             }
@@ -44,7 +42,6 @@ class AuthController extends Controller
     {
        $request->user()->CurrentAccessToken()->delete();
        return response()->json([
-            'status'=>true,
             'message'=>'Logged out successfully ',
             ],200);
     }
