@@ -22,6 +22,11 @@ class DatabaseSeeder extends Seeder
             DepartmentsSeeder::class,
             AcademicYearSeeder::class,
             StudentProfileSeeder::class,
+            ProjectTypeSeeder::class,
+            TeamSeeder::class,
+            ProposalSeeder::class,
+            PreviousProjectSeeder::class,
+            
         ]
         );
 
