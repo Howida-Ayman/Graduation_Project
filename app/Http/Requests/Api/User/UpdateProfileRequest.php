@@ -23,14 +23,10 @@ class UpdateProfileRequest extends FormRequest
     {
         return [
             'full_name' => 'required|string|max:255',
-            // 'faculty' => 'required|string',
             'phone' => 'required|string|max:20',
             'track_name' => 'nullable|string|max:255',
             'gpa' => 'nullable|numeric|min:0|max:4',
-
             'department_id' => 'required|exists:departments,id',
-            'academic_year_id' => 'required|exists:academic_years,id',
-            // 'city' => 'required|string',
             'email' => 'required|email|max:255|unique:users,email,' . $this->user()->id,
         ];
     }

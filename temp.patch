@@ -1,0 +1,145 @@
+diff --git a/app/Http/Controllers/Api/User/UserController.php b/app/Http/Controllers/Api/User/UserController.php
+index 5ce7893..104a594 100644
+--- a/app/Http/Controllers/Api/User/UserController.php
++++ b/app/Http/Controllers/Api/User/UserController.php
+@@ -15,7 +15,6 @@ public function profile(Request $request)
+ {
+     $user = $request->user()->load(
+         'studentProfile.department',
+-        'studentProfile.academicYear'
+     );
+ 
+     return response()->json([
+@@ -45,7 +44,6 @@ public function update(UpdateProfileRequest $request)
+             ['user_id' => $user->id],
+             [
+                 'department_id' => $request->department_id,
+-                'academic_year_id' => $request->academic_year_id,
+                 'gpa' => $request->gpa,
+             ]
+         );
+diff --git a/app/Http/Requests/Api/User/UpdateProfileRequest.php b/app/Http/Requests/Api/User/UpdateProfileRequest.php
+index 6150dd8..a038f1a 100644
+--- a/app/Http/Requests/Api/User/UpdateProfileRequest.php
++++ b/app/Http/Requests/Api/User/UpdateProfileRequest.php
+@@ -23,14 +23,10 @@ public function rules(): array
+     {
+         return [
+             'full_name' => 'required|string|max:255',
+-            // 'faculty' => 'required|string',
+             'phone' => 'required|string|max:20',
+             'track_name' => 'nullable|string|max:255',
+             'gpa' => 'nullable|numeric|min:0|max:4',
+-
+             'department_id' => 'required|exists:departments,id',
+-            'academic_year_id' => 'required|exists:academic_years,id',
+-            // 'city' => 'required|string',
+             'email' => 'required|email|max:255|unique:users,email,' . $this->user()->id,
+         ];
+     }
+diff --git a/app/Http/Resources/ProfileResource.php b/app/Http/Resources/ProfileResource.php
+index 890ae6f..88aae62 100644
+--- a/app/Http/Resources/ProfileResource.php
++++ b/app/Http/Resources/ProfileResource.php
+@@ -18,7 +18,6 @@ public function toArray(Request $request): array
+             'profile_image_url' => $this->profile_image_url,
+ 
+             'department' => $this->studentProfile?->department?->name,
+-            'academic_year' => $this->studentProfile?->academicYear?->code,
+             'gpa' => $this->studentProfile?->gpa,
+         ];
+     }
+diff --git a/app/Models/StudentProfile.php b/app/Models/StudentProfile.php
+index b332b03..096c91c 100644
+--- a/app/Models/StudentProfile.php
++++ b/app/Models/StudentProfile.php
+@@ -10,7 +10,6 @@ class StudentProfile extends Model
+         'user_id',
+         'department_id',
+         'gpa',
+-        'level'
+     ];
+ 
+     protected $casts = [
+@@ -20,4 +19,11 @@ class StudentProfile extends Model
+     {
+         return $this->hasMany(User::class);
+     }
++
++
++    public function department()
++    {
++        return $this->belongsTo(Department::class);
++    }
++
+ }
+diff --git a/database/seeders/AcademicYearSeeder.php b/database/seeders/AcademicYearSeeder.php
+index ddcf2a2..dded003 100644
+--- a/database/seeders/AcademicYearSeeder.php
++++ b/database/seeders/AcademicYearSeeder.php
+@@ -21,7 +21,7 @@ public function run(): void
+         ];
+ 
+         foreach ($years as $year) {
+-            AcademicYear::create(['code' => $year]);
++            AcademicYear::firstOrCreate(['code' => $year]);
+         }
+     
+ }
+diff --git a/database/seeders/DatabaseSeeder.php b/database/seeders/DatabaseSeeder.php
+index c922103..3c2ea00 100644
+--- a/database/seeders/DatabaseSeeder.php
++++ b/database/seeders/DatabaseSeeder.php
+@@ -5,6 +5,7 @@
+ use App\Models\User;
+ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+ use Illuminate\Database\Seeder;
++use StudentsProfileSeeder;
+ 
+ class DatabaseSeeder extends Seeder
+ {
+@@ -20,6 +21,7 @@ public function run(): void
+             UsersSeeder::class,
+             DepartmentsSeeder::class,
+             AcademicYearSeeder::class,
++            StudentProfileSeeder::class,
+         ]
+         );
+ 
+diff --git a/routes/api.php b/routes/api.php
+index 92fb567..3567f8e 100644
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -13,12 +13,6 @@
+ //login
+ Route::post('login',[AuthController::class,'login'])->name('login');
+ Route::middleware('auth:sanctum')->group(function(){
+-//user
+-Route::get('profile',[UserController::class,'profile'])->name('profile');
+-Route::put('profile',[UserController::class,'update'])->name('profile.update');
+-Route::get('academic-years', [LookupController::class, 'academicYears']);
+-Route::get('departments', [LookupController::class, 'departments']);
+-
+ //logout
+ Route::post('logout',[AuthController::class,'logout'])->name('logout');
+ //import & export users
+@@ -35,4 +29,18 @@
+ 
+ 
+ 
++});
++
++
++
++
++
++
++Route::middleware('auth:sanctum')->group(function(){
++//user
++Route::get('profile',[UserController::class,'profile'])->name('profile');
++Route::put('profile',[UserController::class,'update'])->name('profile.update');
++Route::get('academic-years', [LookupController::class, 'academicYears']);
++Route::get('departments', [LookupController::class, 'departments']);
++
+ });
+\ No newline at end of file

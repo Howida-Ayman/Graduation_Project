@@ -6,11 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentProfile extends Model
 {
+    protected $table = 'student_profiles';
+
+    protected $primaryKey = 'user_id'; 
+    public $incrementing = false; // لأنه مش auto-increment
+    protected $keyType = 'int';
+
+
+
     protected $fillable = [
         'user_id',
         'department_id',
         'gpa',
-        'level'
     ];
 
     protected $casts = [
@@ -20,4 +27,11 @@ class StudentProfile extends Model
     {
         return $this->hasMany(User::class);
     }
+
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
 }
