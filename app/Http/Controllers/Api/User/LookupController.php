@@ -20,16 +20,16 @@ class LookupController extends Controller
         'data' => $departments
     ]);
 }
-public function academicYears()
-{
-    $years = AcademicYear::select('id', 'code')
-        ->get();
+// public function academicYears()
+// {
+//     $years = AcademicYear::select('id', 'code')
+//         ->get();
 
-    return response()->json([
-        'status' => true,
-        'data' => $years
-    ]);
-}
+//     return response()->json([
+//         'status' => true,
+//         'data' => $years
+//     ]);
+// }
 
 
 

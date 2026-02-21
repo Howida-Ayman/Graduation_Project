@@ -18,7 +18,6 @@ class ProfileResource extends JsonResource
             'profile_image_url' => $this->profile_image_url,
 
             'department' => $this->studentProfile?->department?->name,
-            'academic_year' => $this->studentProfile?->academicYear?->code,
             'gpa' => $this->studentProfile?->gpa,
         ];
     }

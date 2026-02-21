@@ -15,7 +15,6 @@ class UserController extends Controller
 {
     $user = $request->user()->load(
         'studentProfile.department',
-        'studentProfile.academicYear'
     );
 
     return response()->json([
@@ -40,12 +39,12 @@ public function update(UpdateProfileRequest $request)
             'track_name' => $request->track_name,
         ]);
 
+    
         // تحديث أو إنشاء student_profile
         $user->studentProfile()->updateOrCreate(
             ['user_id' => $user->id],
             [
                 'department_id' => $request->department_id,
-                'academic_year_id' => $request->academic_year_id,
                 'gpa' => $request->gpa,
             ]
         );
