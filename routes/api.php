@@ -22,9 +22,14 @@ Route::get('departments', [LookupController::class, 'departments']);
 Route::post('logout',[AuthController::class,'logout'])->name('logout');
 //import & export users
 Route::middleware('admin')->group(function(){
-Route::get('doctors',[UserController::class,'all'])->name('doctors.all');
-Route::post('doctors/import',[UserController::class,'ImportDoctors'])->name('doctors.import');
-Route::get('doctors/export',[UserController::class,'ExportDoctors'])->name('doctors.export');
+Route::prefix('doctor')->group(function()
+{
+    Route::get('/',[UserController::class,'all'])->name('doctor.all');
+    Route::post('/import',[UserController::class,'ImportDoctors'])->name('doctor.import');
+    Route::get('/export',[UserController::class,'ExportDoctors'])->name('doctor.export');
+    Route::post('/store',[UserController::class,'storeDoctor']);
+    Route::put('/{id}/update',[UserController::class,'updateDoctor']);
+});  
 });
 
 
