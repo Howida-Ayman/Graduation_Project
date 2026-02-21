@@ -36,13 +36,17 @@ class DoctorsImport implements OnEachRow ,WithHeadingRow,WithValidation
             'role_id'=>2 //doctor
         ]
         );
+        if(!empty($row['department']))
+            {
+               
+                StaffProfile::updateOrCreate(
+                    ['user_id'=>$doctor->id],
+                    [
+                        'department_id'=>$this->deparments[$row['department']??null]
+                    ]
+                );
+            }
 
-        StaffProfile::updateOrCreate(
-            ['user_id'=>$doctor->id],
-            [
-                'department_id'=>$this->deparments[$row['department']??null]
-            ]
-        );
         });
 
     }
@@ -54,7 +58,7 @@ class DoctorsImport implements OnEachRow ,WithHeadingRow,WithValidation
             'name'=>'required|string',
             'email'=>'nullable|email|unique:users',
             'phone'=>'nullable|numeric|unique:users',
-            'department'=>'exists:departments,name'
+            'department'=>'nullable|exists:departments,name'
         ];
     }
   

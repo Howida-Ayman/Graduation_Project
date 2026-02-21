@@ -12,9 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 
-class AdminController extends Controller
+class DoctorController extends Controller
 {
-    public function all(Request $request)
+      public function index(Request $request)
     {
         $perpage=$request->per_page??10;
         $doctors=User::with('staffprofile')->where('role_id',2)->paginate($perpage);
@@ -23,7 +23,7 @@ class AdminController extends Controller
             'data'=>$doctors
         ],200);
     }
-    public function ImportDoctors(Request $request)
+    public function import(Request $request)
     {
         $request->validate(
            [ 'file'=>"required|mimes:xlsx,csv"]
@@ -33,7 +33,7 @@ class AdminController extends Controller
             'message'=>'imported successfully',
         ],200);
     }
-    public function ExportDoctors()
+    public function export()
     {
         $fileName = 'doctors_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
         Excel::store(new DoctorsExport,$fileName,'public');
@@ -44,7 +44,7 @@ class AdminController extends Controller
         'download_url' => $url
         ],200);
     }
-    public function storeDoctor(Request $request)
+    public function store(Request $request)
     {
         $request->validate([
             'name'=>'required|string',
@@ -71,7 +71,7 @@ class AdminController extends Controller
             'doctor'=>$user,],200);
     }
 
-    public function updateDoctor(Request $request,$id)
+    public function update(Request $request,$id)
     {
         $doctor=User::findOrFail($id);
         $request->validate([

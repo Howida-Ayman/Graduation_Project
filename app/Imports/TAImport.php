@@ -35,10 +35,13 @@ class TAImport implements OnEachRow ,WithHeadingRow,WithValidation
                 'phone'=>$row['phone']??null,
                 'password'=>Hash::make($row['password']??'123456')
             ]);
-            StaffProfile::updateOrCreate(
-                ['user_id'=>$TA->id],
-                ['department_id'=>$this->department[$row['department']??null]]   
-            );
+            if(!empty($row['department']))
+                {
+                    StaffProfile::updateOrCreate(
+                        ['user_id'=>$TA->id],
+                        ['department_id'=>$this->department[$row['department']??null]]   
+                    );
+                }
         });
     }
     public function rules(): array
@@ -48,7 +51,7 @@ class TAImport implements OnEachRow ,WithHeadingRow,WithValidation
             'name'=>'required|string',
             'email'=>'nullable|email|unique:users',
             'phone'=>'nullable|numeric|unique:users',
-            'department'=>'exists:Departments,name'
+            'department'=>'nullable|exists:departments,name'
         ];
     }
 
