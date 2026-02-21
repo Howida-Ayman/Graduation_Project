@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use Illuminate\Container\Attributes\DB;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\ToCollection;

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -17,11 +18,11 @@ Route::post('logout',[AuthController::class,'logout'])->name('logout');
 Route::middleware('admin')->group(function(){
 Route::prefix('doctor')->group(function()
 {
-    Route::get('/',[UserController::class,'all'])->name('doctor.all');
-    Route::post('/import',[UserController::class,'ImportDoctors'])->name('doctor.import');
-    Route::get('/export',[UserController::class,'ExportDoctors'])->name('doctor.export');
-    Route::post('/store',[UserController::class,'storeDoctor']);
-    Route::put('/{id}/update',[UserController::class,'updateDoctor']);
+    Route::get('/',[AdminController::class,'all'])->name('doctor.all');
+    Route::post('/import',[AdminController::class,'ImportDoctors'])->name('doctor.import');
+    Route::get('/export',[AdminController::class,'ExportDoctors'])->name('doctor.export');
+    Route::post('/store',[AdminController::class,'storeDoctor']);
+    Route::put('/{id}/update',[AdminController::class,'updateDoctor']);
 });  
 });
 
