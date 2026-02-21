@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('national_id')->unique();
             $table->string('password');
             $table->string('full_name');
-            $table->string('email')->unique();
+            $table->string('email')->unique()->nullable();
             $table->string('phone')->nullable();
             $table->string('track_name')->nullable();
             $table->string('profile_image_url')->nullable();
