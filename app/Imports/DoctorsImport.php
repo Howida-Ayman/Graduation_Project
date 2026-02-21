@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Department;
 use App\Models\StaffProfile;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Concerns\OnEachRow;
@@ -23,7 +24,8 @@ class DoctorsImport implements OnEachRow ,WithHeadingRow,WithValidation
    }
     public function onRow(Row $row)
     {
-        
+        DB::transaction(function() use($row)
+        {
         $doctor = User::updateOrCreate(
         ['national_id'=>$row['national_id']],
         [
@@ -41,6 +43,8 @@ class DoctorsImport implements OnEachRow ,WithHeadingRow,WithValidation
                 'department_id'=>$this->deparments[$row['department']??null]
             ]
         );
+        });
+
     }
 
     public function rules(): array

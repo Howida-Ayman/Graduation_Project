@@ -1,38 +1,19 @@
 <?php
 
-use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\User\LookupController;
-use App\Http\Controllers\Api\User\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
 //login
 Route::post('login',[AuthController::class,'login'])->name('login');
+
 Route::middleware('auth:sanctum')->group(function(){
-//user
-Route::get('profile',[UserController::class,'profile'])->name('profile');
-Route::put('profile',[UserController::class,'update'])->name('profile.update');
-Route::get('academic-years', [LookupController::class, 'academicYears']);
-Route::get('departments', [LookupController::class, 'departments']);
 
 //logout
 Route::post('logout',[AuthController::class,'logout'])->name('logout');
-//import & export users
-Route::middleware('admin')->group(function(){
-Route::prefix('doctor')->group(function()
-{
-    Route::get('/',[AdminController::class,'all'])->name('doctor.all');
-    Route::post('/import',[AdminController::class,'ImportDoctors'])->name('doctor.import');
-    Route::get('/export',[AdminController::class,'ExportDoctors'])->name('doctor.export');
-    Route::post('/store',[AdminController::class,'storeDoctor']);
-    Route::put('/{id}/update',[AdminController::class,'updateDoctor']);
-});  
-});
-
-
 
 });
