@@ -24,4 +24,18 @@ class SuggestedProject extends Model
 {
     return $this->belongsTo(Department::class);
 }
+
+public function favorites()
+{
+    return $this->belongsToMany(
+        User::class,
+        'suggested_project_favorites',
+        'suggested_project_id',
+        'student_user_id'
+    );
+}
+
+
+
+
 }

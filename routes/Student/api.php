@@ -21,6 +21,7 @@ Route::get('profile',[UserController::class,'profile'])->name('profile');
 Route::put('profile',[UserController::class,'update'])->name('profile.update');
 Route::get('academic-years', [LookupController::class, 'academicYears']);
 Route::get('departments', [LookupController::class, 'departments']);
+Route::get('/library/favorites', [LibraryController::class, 'favorites']);
 
 
 
