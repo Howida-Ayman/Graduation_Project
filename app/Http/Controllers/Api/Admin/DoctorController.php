@@ -36,8 +36,8 @@ class DoctorController extends Controller
     public function export()
     {
         $fileName = 'doctors_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        Excel::store(new DoctorsExport,$fileName,'public');
-        $url=asset('storage/'.$fileName);
+        Excel::store(new DoctorsExport,'Doctors/'.$fileName,'public');
+        $url=asset('storage/Doctors/'.$fileName);
            return response()->json([
         'message' => 'Doctors exported successfully',
         'file_name' => $fileName,
@@ -51,7 +51,7 @@ class DoctorController extends Controller
             'national_id'=>'required|unique:users|numeric',
             'email'=>'nullable|email|unique:users',
             'phone'=>'nullable|numeric|unique:users',
-            'department_id'=>'exists:departments,id'
+            'department_id'=>'nullable|exists:departments,id'
         ]);
         $doctor=[
             'full_name'=>$request->name,
@@ -62,42 +62,16 @@ class DoctorController extends Controller
             'password'=>Hash::make('123456')
         ];
         $user= User::create($doctor);
-        StaffProfile::create([
-            'user_id'=>$user->id,
-            'department_id'=>$request->department_id
-        ]);
+        if($request->filled('department_id'))
+            {
+                StaffProfile::create([
+                    'user_id'=>$user->id,
+                    'department_id'=>$request->department_id
+                ]);
+            }
         return response()->json([
             'message'=>'doctor added successfully',
             'doctor'=>$user,],200);
     }
-
-    public function update(Request $request,$id)
-    {
-        $doctor=User::findOrFail($id);
-        $request->validate([
-            'name'=>'required|string',
-            'national_id'=>'required|numeric|unique:users,national_id,'.$doctor->id,
-            'email'=>'nullable|email|unique:users,email,'.$doctor->id,
-            'phone'=>'nullable|numeric|unique:users,phone,'.$doctor->id ,
-            'department_id'=>'exists:departments,id'
-        ]);
-            $doctor->full_name=$request->name;
-            $doctor->national_id=$request->national_id;
-            $doctor->role_id=2;
-            $doctor->email = $request->filled('email') ? $request->email : null;
-            $doctor->phone=$request->filled('phone') ?$request->phone:null;
-            $doctor->save();
-            $staff = StaffProfile::updateOrCreate(
-            ['user_id' => $doctor->id],
-            ['department_id' => $request->department_id]
-        );
-
-            $user=User::with('staffprofile')
-            ->where('id',$id)->get();
-             return response()->json([
-            'message'=>'doctor updated successfully',
-            'doctor'=>$user,],200);
-
-
-    }
+   
 }

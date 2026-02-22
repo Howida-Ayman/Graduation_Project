@@ -17,8 +17,7 @@ Route::prefix('admin')->group(function(){
     Route::get('/',[DoctorController::class,'index'])->name('doctor.index');
     Route::post('/import',[DoctorController::class,'import'])->name('doctor.import');
     Route::get('/export',[DoctorController::class,'export'])->name('doctor.export');
-    Route::post('/store',[DoctorController::class,'store'])->name(name: 'doctor.store');
-    Route::put('/{id}/update',[DoctorController::class,'update'])->name('doctor.update'); 
+    Route::post('/store',[DoctorController::class,'store'])->name(name: 'doctor.store'); 
     });
 
     //import & export TA

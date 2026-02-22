@@ -7,6 +7,9 @@ use PhpParser\Builder\Function_;
 
 class StaffProfile extends Model
 {
+    protected $primaryKey = 'user_id';
+    public $incrementing = false;
+    protected $keyType = 'int';
     protected $fillable = [
         'user_id',
         'department_id',
