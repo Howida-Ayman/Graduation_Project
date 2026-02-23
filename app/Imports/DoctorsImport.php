@@ -54,10 +54,10 @@ class DoctorsImport implements OnEachRow ,WithHeadingRow,WithValidation
     public function rules(): array
     {
         return[
-            'national_id'=>'required|unique:users|numeric',
+            'national_id'=>'required|unique:users|digits:14',
             'name'=>'required|string',
             'email'=>'nullable|email|unique:users',
-            'phone'=>'nullable|numeric|unique:users',
+            'phone'=>'nullable|digits:11|unique:users',
             'department'=>'nullable|exists:departments,name'
         ];
     }

@@ -47,10 +47,10 @@ class TAImport implements OnEachRow ,WithHeadingRow,WithValidation
     public function rules(): array
     {
         return[
-            'national_id'=>'required|numeric|unique:users',
+            'national_id'=>'required|digits:14|unique:users',
             'name'=>'required|string',
             'email'=>'nullable|email|unique:users',
-            'phone'=>'nullable|numeric|unique:users',
+            'phone'=>'nullable|digits:11|unique:users',
             'department'=>'nullable|exists:departments,name'
         ];
     }

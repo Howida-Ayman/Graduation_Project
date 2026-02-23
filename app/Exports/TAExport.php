@@ -20,9 +20,9 @@ class TAExport implements FromCollection , WithHeadings
             return[
                 'Name'=>$TA->full_name,
                 'National Id'=>$TA->national_id,
-                'Email'=>$TA->email??'-',
-                'Phone'=>$TA->phone??'-',
-                'Department'=>$TA->staffprofile->department->name??'-',
+                'Email'=>$TA->email??"",
+                'Phone'=>$TA->phone??"",
+                'Department'=>$TA->staffprofile->department->name??"",
 
             ];
 

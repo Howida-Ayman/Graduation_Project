@@ -20,9 +20,9 @@ class DoctorsExport implements FromCollection, WithHeadings
             return[
              'Name'=>$doctor->full_name,
              'National ID'=>$doctor->national_id,
-             'Email'=>$doctor->email??'-',
-             'Department'=>$doctor->staffprofile->department->name??'-',
-             'phone'=>$doctor->phone??'-',
+             'Email'=>$doctor->email??"",
+             'Department'=>$doctor->staffprofile->department->name??"",
+             'phone'=>$doctor->phone??"",
             ];
         });
     }

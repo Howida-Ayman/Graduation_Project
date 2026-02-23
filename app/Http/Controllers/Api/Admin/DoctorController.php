@@ -49,9 +49,9 @@ class DoctorController extends Controller
     {
         $request->validate([
             'name'=>'required|string',
-            'national_id'=>'required|unique:users|numeric',
+            'national_id'=>'required|unique:users|digits:14',
             'email'=>'nullable|email|unique:users',
-            'phone'=>'nullable|numeric|unique:users',
+            'phone'=>'nullable|digits:11|unique:users',
             'department_id'=>'nullable|exists:departments,id'
         ]);
         $user=DB::transaction(function() use($request)

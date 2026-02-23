@@ -52,9 +52,9 @@ class TAController extends Controller
     {
         $request->validate([
             'name'=>'required|string',
-            'national_id'=>'required|unique:users|numeric',
+            'national_id'=>'required|unique:users|digits:14',
             'email'=>'nullable|email|unique:users',
-            'phone'=>'nullable|numeric|unique:users',
+            'phone'=>'nullable|digits:11|unique:users',
             'department_id'=>'nullable|exists:departments,id'
         ]);
         $user=DB::transaction(function() use($request)
@@ -87,9 +87,9 @@ class TAController extends Controller
         $request->validate(
             [
                 'name'=>"nullable|string",
-                'national_id'=>'nullable|numeric|unique:users,national_id,'.$TA->id,
+                'national_id'=>'nullable|digits:14|unique:users,national_id,'.$TA->id,
                 'email'=>'nullable|email|unique:users,email,'.$TA->id,
-                'phone'=>'nullable|numeric|unique:users,phone,'.$TA->id,
+                'phone'=>'nullable|digits:11|unique:users,phone,'.$TA->id,
                 'department_id'=>'nullable|exists:departments,id',
             ]
         );
