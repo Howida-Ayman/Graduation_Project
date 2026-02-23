@@ -21,6 +21,9 @@ Route::prefix('library')->group(function () {
     Route::get('/', [LibraryController::class, 'index']);
     Route::get('/suggested', [LibraryController::class, 'suggested']);
     Route::get('/previous', [LibraryController::class, 'previous']);
+
+    Route::get('/previous/{id}', [PreviousProjectController::class, 'show']);
+    Route::get('/suggested/{id}', [SuggestedProjectController::class, 'show']);
     
 });
 

@@ -32,6 +32,7 @@ return new class extends Migration
 
             $table->string('title');
             $table->text('description');
+            $table->text('problem_statement')->nullable();
             $table->text('technologies')->nullable();
             $table->string('attachment_file')->nullable();
             $table->string('image_url')->nullable();

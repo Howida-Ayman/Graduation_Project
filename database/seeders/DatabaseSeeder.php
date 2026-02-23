@@ -17,18 +17,20 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            // RolesSeeder::class,
-            // UsersSeeder::class,
-            // DepartmentsSeeder::class,
-            // AcademicYearSeeder::class,
-            // StudentProfileSeeder::class,
-            // ProjectTypeSeeder::class,
-            // TeamSeeder::class,
-            // ProposalSeeder::class,
-            // PreviousProjectSeeder::class,
+            RolesSeeder::class,
+            UsersSeeder::class,
+            DepartmentsSeeder::class,
+            AcademicYearSeeder::class,
+            StudentProfileSeeder::class,
+            ProjectTypeSeeder::class,
+            TeamSeeder::class,
+            ProposalSeeder::class,
+            PreviousProjectSeeder::class,
             SuggestedProjectSeeder::class,
             PreviousProjectFavoritesSeeder::class,
             SuggestedProjectFavoritesSeeder::class,
+            TeamMembershipSeeder::class,
+            TeamSupervisorSeeder::class,
         
             
         ]
