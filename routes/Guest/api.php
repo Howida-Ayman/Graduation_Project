@@ -11,12 +11,17 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+
 //projects
 Route::get('/library', [LibraryController::class, 'index']);
 
 
 Route::prefix('library')->group(function () {
     Route::get('/', [LibraryController::class, 'index']);
+    Route::get('/suggested', [LibraryController::class, 'suggested']);
+    Route::get('/previous', [LibraryController::class, 'previous']);
+    
 });
 
 Route::get('suggested-projects', [SuggestedProjectController::class, 'index']);

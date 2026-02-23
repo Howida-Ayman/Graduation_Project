@@ -24,4 +24,18 @@ class PreviousProject extends Model
     {
         return $this->belongsTo(Proposal::class);
     }
+
+    public function favorites()
+{
+    return $this->belongsToMany(
+        User::class,
+        'previous_project_favorites',
+        'previous_project_id',
+        'student_user_id'
+    );
+}
+
+
+
+
 }
