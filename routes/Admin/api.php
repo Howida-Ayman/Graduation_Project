@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\DoctorController;
+use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,14 @@ Route::prefix('admin')->group(function(){
     Route::put('/{id}/update',[TAController::class,'update'])->name('TA.update'); 
     });
 
+    //import & export students
+    Route::prefix('student')->group(function(){
+    Route::get('/',[StudentController::class,'index'])->name('student.index');
+    Route::post('/import',[StudentController::class,'import'])->name('student.import');
+    Route::get('/export',[StudentController::class,'export'])->name('student.export');
+    Route::post('/store',[StudentController::class,'store'])->name(name: 'student.store');
+    Route::put('/{id}/update',[StudentController::class,'update'])->name('student.update'); 
+    });
 
 });
 });

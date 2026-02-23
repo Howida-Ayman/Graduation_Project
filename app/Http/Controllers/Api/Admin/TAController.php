@@ -8,6 +8,7 @@ use App\Imports\TAImport;
 use App\Models\StaffProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -32,7 +33,7 @@ class TAController extends Controller
         ]);
         Excel::import(new TAImport,$request->file('file'));
         return response()->json([
-            'message'=> 'TA imported successfully'],200);
+            'message'=> 'TA imported successfully'],201);
     }
 
     public function export(Request $request)
@@ -56,6 +57,8 @@ class TAController extends Controller
             'phone'=>'nullable|numeric|unique:users',
             'department_id'=>'nullable|exists:departments,id'
         ]);
+        $user=DB::transaction(function() use($request)
+        {
         $doctor=[
             'full_name'=>$request->name,
             'national_id'=>$request->national_id,
@@ -72,9 +75,11 @@ class TAController extends Controller
                     'department_id'=>$request->department_id
                 ]);
             }
+            return $user->load('staffprofile');
+        });
         return response()->json([
             'message'=>'TA added successfully',
-            'doctor'=>$user,],200);
+            'TA'=>$user,],201);
     }
     public function update(Request $request,$id)
     {

@@ -9,6 +9,7 @@ use App\Models\StaffProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -31,7 +32,7 @@ class DoctorController extends Controller
         Excel::import(new DoctorsImport,$request->file('file'));
         return response()->json([
             'message'=>'imported successfully',
-        ],200);
+        ],201);
     }
     public function export()
     {
@@ -53,6 +54,8 @@ class DoctorController extends Controller
             'phone'=>'nullable|numeric|unique:users',
             'department_id'=>'nullable|exists:departments,id'
         ]);
+        $user=DB::transaction(function() use($request)
+        {
         $doctor=[
             'full_name'=>$request->name,
             'national_id'=>$request->national_id,
@@ -69,9 +72,11 @@ class DoctorController extends Controller
                     'department_id'=>$request->department_id
                 ]);
             }
+           return $user->load('staffprofile');
+        });
         return response()->json([
             'message'=>'doctor added successfully',
-            'doctor'=>$user,],200);
+            'doctor'=>$user,],201);
     }
    
 }
