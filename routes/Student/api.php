@@ -26,15 +26,8 @@ Route::get('/library/favorites', [LibraryController::class, 'favorites']);
 
 
 
+
 });
 
-//projects
-Route::get('/library', [LibraryController::class, 'index']);
 
 
-Route::prefix('library')->group(function () {
-    Route::get('/', [LibraryController::class, 'index']);
-});
-
-Route::get('suggested-projects', [SuggestedProjectController::class, 'index']);
-Route::get('previous-projects', [PreviousProjectController::class, 'index']);

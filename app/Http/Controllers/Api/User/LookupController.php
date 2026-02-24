@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Department;
+use App\Models\ProjectType;
 use Illuminate\Http\Request;
 
 class LookupController extends Controller
@@ -30,6 +31,14 @@ class LookupController extends Controller
 //         'data' => $years
 //     ]);
 // }
+public function getprojectTypes()
+{
+    $types=ProjectType::select('id','name','description')->get();
+    return response()->json([
+        'message'=>'project types retrieved successfully',
+        'data'=>$types
+    ],200);
+}
 
 
 

@@ -26,6 +26,10 @@ class ProjectTypeSeeder extends Seeder
                 'name' => 'Research',
                 'description' => 'Academic or research-based projects',
             ],
+            [
+                'name' => 'Other',
+                'description' => 'Projects that do not fall under system, website, mobile, or research categories',
+            ],
         ];
 
         foreach ($types as $type) {

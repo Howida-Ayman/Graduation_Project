@@ -4,7 +4,7 @@
 use App\Http\Controllers\Api\Library\LibraryController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
-
+use App\Http\Controllers\Api\User\LookupController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -26,3 +26,6 @@ Route::prefix('library')->group(function () {
 
 Route::get('suggested-projects', [SuggestedProjectController::class, 'index']);
 Route::get('previous-projects', [PreviousProjectController::class, 'index']);
+
+//project types
+Route::get('project-types',[LookupController::class,'getprojectTypes']);
