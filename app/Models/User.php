@@ -66,4 +66,18 @@ public function role()
 {
     return $this->belongsTo(Role::class);
 }
+
+    public function supervisedTeams()
+    {
+        return $this->belongsToMany(
+            Team::class,
+            'team_supervisors',
+            'supervisor_user_id',
+            'team_id'
+        )->withPivot(['supervisor_role', 'assigned_at', 'ended_at'])
+         ->wherePivot('ended_at', null);  // الفرق اللي لسه بيشرف عليها
+    }
+
+
+
 }

@@ -72,7 +72,7 @@ public function index(Request $request)
 public function suggested(Request $request)
 {
     $search = $request->search;
-    $department = $request->department;
+    $department = $request->department; // هيجي "CS", "IT", "IS", "MM"
     $technology = $request->technology;
 
     $projects = SuggestedProject::query()
@@ -82,9 +82,12 @@ public function suggested(Request $request)
         ->when($search, fn($q) =>
             $q->where('title', 'like', "%$search%")
         )
-        ->when($department, fn($q) =>
-            $q->where('department_id', $department)
-        )
+        ->when($department, function ($q) use ($department) {
+            // البحث في اسم القسم مباشرة
+            $q->whereHas('department', fn($q2) =>
+                $q2->where('name', $department)  // بالظبط "CS" أو "IT" إلخ
+            );
+        })
         ->when($technology, fn($q) =>
             $q->where('recommended_tools', 'like', "%$technology%")
         )
@@ -97,15 +100,12 @@ public function suggested(Request $request)
 public function previous(Request $request)
 {
     $search = $request->search;
-    $department = $request->department;
+    $department = $request->department; // "CS", "IT", "IS", "MM"
     $technology = $request->technology;
     $year = $request->year;
 
     $projects = PreviousProject::query()
-        ->with([
-            'proposal.department',
-            'proposal.team.academicYear'
-        ])
+        ->with(['proposal.department', 'proposal.team.academicYear'])
         ->withCount('favorites')
         ->when($search, function ($q) use ($search) {
             $q->whereHas('proposal', fn($q2) =>
@@ -113,9 +113,9 @@ public function previous(Request $request)
             );
         })
         ->when($department, function ($q) use ($department) {
-            $q->whereHas('proposal', fn($q2) =>
-                $q2->where('department_id', $department)
-            );
+            $q->whereHas('proposal.department', function ($q2) use ($department) {
+                $q2->where('name', $department);  // بالظبط "CS" أو "IT"
+            });
         })
         ->when($technology, function ($q) use ($technology) {
             $q->whereHas('proposal', fn($q2) =>

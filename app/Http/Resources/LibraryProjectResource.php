@@ -23,11 +23,12 @@ class LibraryProjectResource extends JsonResource
                 'type' => 'suggested',
                 'title' => $this->title,
                 'description' => $this->description,
-                'year' => null,
                 'department' => $this->department?->name,
-                'technologies' => $this->recommended_tools,
+                'technologies' => $this->recommended_tools 
+                ? array_map('trim', explode(',', $this->recommended_tools))
+                : [],  // تحويل النص إلى array
+                'favorites' => $this->favorites_count ?? 0,
                 // 'views' => $this->views_count,
-                'favorites' => $this->favorites_count,
             ];
         }
 
@@ -41,9 +42,12 @@ class LibraryProjectResource extends JsonResource
                 'description' => $this->proposal?->description,
                 'year' => $this->proposal?->team?->academicYear?->code,
                 'department' => $this->proposal?->department?->name,
-                'technologies' => $this->proposal?->technologies,
+                'technologies' => $this->proposal?->technologies
+                ? array_map('trim', explode(',', $this->proposal->technologies))
+                : [],  // تحويل النص إلى array
+                'favorites' => $this->favorites_count ?? 0,
                 // 'views' => $this->proposal?->views_count,
-                'favorites' => $this->favorites_count,
+                
             ];
         }
 

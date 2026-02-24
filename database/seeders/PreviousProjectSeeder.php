@@ -18,6 +18,7 @@ class PreviousProjectSeeder extends Seeder
                 'team_id' => $proposal->team_id,
                 'proposal_id' => $proposal->id,
                 'final_score' => rand(70, 100),
+                'feedback' => 'Great work on this project!',
                 'archived_at' => now(),
             ]);
         }

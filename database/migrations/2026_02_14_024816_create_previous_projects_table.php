@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained('teams')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('proposal_id')->constrained('proposals')->restrictOnDelete()->cascadeOnUpdate();
             $table->decimal('final_score', 8, 2)->nullable();
+            $table->text('feedback')->nullable();
+            $table->string('graded_by')->nullable();
+            $table->timestamp('graded_at')->nullable();
             $table->timestamp('archived_at')->nullable();
             $table->timestamps();
 

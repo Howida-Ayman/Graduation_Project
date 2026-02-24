@@ -29,6 +29,8 @@ class DatabaseSeeder extends Seeder
             SuggestedProjectSeeder::class,
             // PreviousProjectFavoritesSeeder::class,
             SuggestedProjectFavoritesSeeder::class,
+            TeamMembershipSeeder::class,
+            TeamSupervisorSeeder::class,
         
             
         ]
