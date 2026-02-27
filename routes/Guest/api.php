@@ -14,9 +14,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-//projects
-Route::get('/library', [LibraryController::class, 'index']);
-
+//projects  --> library ,suggested , previous and details of them
 
 Route::prefix('library')->group(function () {
     Route::get('/', [LibraryController::class, 'index']);
@@ -27,9 +25,6 @@ Route::prefix('library')->group(function () {
     Route::get('/suggested/{id}', [SuggestedProjectController::class, 'show']);
     
 });
-
-Route::get('suggested-projects', [SuggestedProjectController::class, 'index']);
-Route::get('previous-projects', [PreviousProjectController::class, 'index']);
 
 //project types
 Route::get('project-types',[LookupController::class,'getprojectTypes']);

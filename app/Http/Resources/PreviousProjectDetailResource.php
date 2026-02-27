@@ -22,6 +22,9 @@ class PreviousProjectDetailResource extends JsonResource
                     'id' => $member->student_user_id,
                     'name' => $user?->full_name ?? 'Unknown',
                     'role' => $member->role_in_team,
+                    'email'=> $user?->email ?? 'Unknown',
+                    'track' => $user->track_name,
+                    'department' => $user->studentprofile?->department?->name,
                 ];
             }
         }

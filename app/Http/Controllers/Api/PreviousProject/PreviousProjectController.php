@@ -20,7 +20,6 @@ class PreviousProjectController extends Controller
                 'proposal.team.supervisors',
                 'proposal.projectType'
             ])
-            ->withCount('favorites')
             ->findOrFail($id);
 
             return response()->json([

@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\Library\LibraryController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
-
+use App\Http\Controllers\Api\Team\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +23,8 @@ Route::get('academic-years', [LookupController::class, 'academicYears']);
 Route::get('departments', [LookupController::class, 'departments']);
 Route::get('/library/favorites', [LibraryController::class, 'favorites']);
 
-
+Route::get('/my-team', [TeamController::class, 'index']);
+Route::post('/my-team/leave', [TeamController::class, 'leave']);
 
 
 
