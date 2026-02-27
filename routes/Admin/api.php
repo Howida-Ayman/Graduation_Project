@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\AcademicYearsController;
 use App\Http\Controllers\Api\Admin\DepartmentController;
 use App\Http\Controllers\Api\Admin\DoctorController;
+use App\Http\Controllers\Api\Admin\ProjectRuleController;
 use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
 use Illuminate\Http\Request;
@@ -43,16 +44,22 @@ Route::prefix('admin')->group(function(){
 
     //Departments
     Route::prefix('departments')->group(function(){
-        Route::get('/',[DepartmentController::class,'index'])->name('departments.index');
         Route::post('/',[DepartmentController::class,'store'])->name('departments.store');
         Route::put('/{id}/update',[DepartmentController::class,'update'])->name('departments.update');
     });
 
     //ِAcademic Years
         Route::prefix('academic-years')->group(function(){
-        Route::get('/',[AcademicYearsController::class,'index'])->name('academic-years.index');
         Route::post('/',[AcademicYearsController::class,'store'])->name('academic-years.store');
         Route::put('/{id}/update',[AcademicYearsController::class,'update'])->name('academic-years.update');
+    });
+
+    //team & project rules
+    Route::prefix('project_rules')->group(function(){
+        Route::get('/',[ProjectRuleController::class,'index']);
+        Route::put('store/team rules',[ProjectRuleController::class,'UpdateTeamRules']);
+        Route::post('/{section}',[ProjectRuleController::class,'StoreRules']);
+        Route::delete('/{id}/delete',[ProjectRuleController::class,'deleteRule']);
     });
 });
 });

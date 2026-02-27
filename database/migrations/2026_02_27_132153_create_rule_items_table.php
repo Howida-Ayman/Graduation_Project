@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('project_rules', function (Blueprint $table) {
+        Schema::create('rule_items', function (Blueprint $table) {
             $table->id();
-            $table->unsignedTinyInteger('min_team_size');
-            $table->unsignedTinyInteger('max_team_size');
-            $table->date('team_formation_deadline')->nullable();
+            $table->enum('section', ['project_type_requirements', 'idea_selection_criteria']);
+            $table->text('rules');
             $table->timestamps();
         });
     }
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('project_rules');
+        Schema::dropIfExists('rule_items');
     }
 };
