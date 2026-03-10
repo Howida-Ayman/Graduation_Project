@@ -68,6 +68,18 @@ public function department()
          ->wherePivot('ended_at', null);
     }
 
+    public function proposals()
+    {
+        return $this->hasMany(Proposal::class);
+    }
+
+    public function activeProposal()
+    {
+        return $this->hasOne(Proposal::class)
+            ->whereIn('status', ['approved', 'completed'])
+            ->latest();
+    }
+
 
 
 

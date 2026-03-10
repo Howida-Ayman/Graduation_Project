@@ -14,7 +14,6 @@ class SuggestedProjectController extends Controller
         $project = SuggestedProject::with([
             'department'
         ])
-        ->withCount('favorites')
         ->findOrFail($id);
 
         return new SuggestedProjectDetailResource($project);
