@@ -17,12 +17,10 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->text('recommended_tools')->nullable();
-            $table->foreignId('created_by_admin_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
             $table->index(['department_id']);
-            $table->index(['created_by_admin_id']);
             $table->index(['is_active']);
         });
     }

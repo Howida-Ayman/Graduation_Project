@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::create('milestone_requirements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('milestone_id')->constrained('milestones')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->string('title');
-            $table->text('description')->nullable();
+            $table->text('requirement')->nullable();
             $table->timestamps();
 
             $table->index(['milestone_id']);

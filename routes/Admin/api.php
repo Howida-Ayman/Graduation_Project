@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\DoctorController;
 use App\Http\Controllers\Api\Admin\ProjectRuleController;
 use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
+use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,7 @@ Route::prefix('admin')->group(function(){
     Route::post('/import',[DoctorController::class,'import'])->name('doctor.import');
     Route::get('/export',[DoctorController::class,'export'])->name('doctor.export');
     Route::post('/store',[DoctorController::class,'store'])->name(name: 'doctor.store'); 
+    Route::delete('/delete',[DoctorController::class,'destroy']);
     });
 
     //import & export TA
@@ -31,6 +33,7 @@ Route::prefix('admin')->group(function(){
     Route::get('/export',[TAController::class,'export'])->name('TA.export');
     Route::post('/store',[TAController::class,'store'])->name(name: 'TA.store');
     Route::put('/{id}/update',[TAController::class,'update'])->name('TA.update'); 
+    Route::delete('/delete',[TAController::class,'destroy']);
     });
 
     //import & export students
@@ -40,6 +43,7 @@ Route::prefix('admin')->group(function(){
     Route::get('/export',[StudentController::class,'export'])->name('student.export');
     Route::post('/store',[StudentController::class,'store'])->name(name: 'student.store');
     Route::put('/{id}/update',[StudentController::class,'update'])->name('student.update'); 
+    Route::delete('/delete',[StudentController::class,'destroy']);
     });
 
     //Departments
@@ -61,5 +65,14 @@ Route::prefix('admin')->group(function(){
         Route::post('/{section}',[ProjectRuleController::class,'StoreRules']);
         Route::delete('/{id}/delete',[ProjectRuleController::class,'deleteRule']);
     });
+
+    //suggested projects
+    Route::prefix('suggested_project')->group(function(){
+        Route::post('store',[SuggestedProjectController::class,'store']);
+        Route::put('{id}/update',action: [SuggestedProjectController::class,'update']);
+        Route::delete('{id}/delete',action: [SuggestedProjectController::class,'destroy']);
+    });
+    //delete user(student or doctor or TA)
+    Route::delete('/{id}/user/delete',[StudentController::class,'deleteUser']);
 });
 });

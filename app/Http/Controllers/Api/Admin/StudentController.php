@@ -16,9 +16,21 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
+        $search=$request->search;
         $perpage=$request->per_page??10;
         $students=User::with('studentprofile')
         ->where('role_id',4)
+        ->when($search,function($query) use($search){
+            $query->where(function ($q) use ($search) {
+            $q->where('full_name',"like","%$search%")
+            ->orWhere('national_id','like',"%$search%")
+            ->orWhere('email','like',"%$search%")
+            ->orWhereHas('studentprofile.department',function ($q) use($search)
+            {
+                $q->where('name','like',"%$search%");
+            });
+        });
+        })
         ->paginate($perpage);
         return response()->json([
             'message'=>'Students Retrived Successfully',
@@ -118,6 +130,20 @@ class StudentController extends Controller
         return response()->json([
             'message'=>'student updated successfully',
             'data'=> $student
+        ],200);
+    }
+    public function destroy()
+    {
+        $students=User::where('role_id',4)->delete();
+        return response()->json([
+            'message'=>'Students deleted successfully'
+        ],200);
+    }
+    public function deleteUser($id)
+    {
+        $user=User::findOrFail($id)->delete();
+        return response()->json([
+            'message'=>'user deleted successfully'
         ],200);
     }
 }

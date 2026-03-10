@@ -18,8 +18,21 @@ class TAController extends Controller
 {
     public function index(Request $request)
     {
+        $search=$request->search;
         $perpage= $request->per_page??10;
-        $TA=User::with('staffprofile')->where('role_id',3)->paginate($perpage);
+        $TA=User::with('staffprofile')->where('role_id',3)
+        ->when($search,function($query) use($search){
+            $query->where(function ($q) use ($search) {
+            $q->where('full_name',"like","%$search%")
+            ->orWhere('national_id','like',"%$search%")
+            ->orWhere('email','like',"%$search%")
+            ->orWhereHas('staffprofile.department',function ($q) use($search)
+            {
+                $q->where('name','like',"%$search%");
+            });
+        });
+        })
+        ->paginate($perpage);
         return response()->json([
             'message'=>'Teacher Assistant retrieved successfully',
             'data'=>$TA
@@ -110,5 +123,12 @@ class TAController extends Controller
             'data'=>$user
         ],200);
 
+    }
+    public function destroy()
+    {
+        $TA=User::where('role_id',3)->delete();
+        return response()->json([
+            'message'=>'TA deleted successfully'
+        ],200);
     }
 }

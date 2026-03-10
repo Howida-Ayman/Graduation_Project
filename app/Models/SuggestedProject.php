@@ -14,9 +14,7 @@ class SuggestedProject extends Model
         'student_id',
         'department_id',
         'is_active',
-        'recommended_tools',  
-        'created_by_admin_id',
-        'department_id',
+        'recommended_tools',
         
         ];
 

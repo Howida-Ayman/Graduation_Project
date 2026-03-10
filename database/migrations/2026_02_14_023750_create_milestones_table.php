@@ -14,17 +14,18 @@ return new class extends Migration
         Schema::create('milestones', function (Blueprint $table) {
             $table->id();
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
-            $table->foreignId('created_by_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
-            $table->enum('scope', ['admin_global','supervisor_global']);
             $table->string('title');
             $table->text('description')->nullable();
+            $table->unsignedSmallInteger('sort_order');
+            $table->dateTime('start_date');
             $table->dateTime('deadline');
+            $table->enum('status',['completed','on_progress','pending']);
             $table->boolean('is_open')->default(true);
             $table->timestamps();
 
-            $table->index(['academic_year_id']);
-            $table->index(['created_by_user_id']);
-            $table->index(['scope']);
+            $table->unique(['academic_year_id', 'sort_order']);
+            $table->index(['academic_year_id', 'status']);
+            $table->index(['start_date']);
             $table->index(['deadline']);
             $table->index(['is_open']);
         });

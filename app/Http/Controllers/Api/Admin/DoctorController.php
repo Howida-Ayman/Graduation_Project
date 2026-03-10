@@ -17,8 +17,21 @@ class DoctorController extends Controller
 {
       public function index(Request $request)
     {
+        $search=$request->search;
         $perpage=$request->per_page??10;
-        $doctors=User::with('staffprofile')->where('role_id',2)->paginate($perpage);
+        $doctors=User::with('staffprofile')->where('role_id',2)
+        ->when($search,function($query) use($search){
+            $query->where(function ($q) use ($search) {
+            $q->where('full_name',"like","%$search%")
+            ->orWhere('national_id','like',"%$search%")
+            ->orWhere('email','like',"%$search%")
+            ->orWhereHas('staffprofile.department',function ($q) use($search)
+            {
+                $q->where('name','like',"%$search%");
+            });
+        });
+        })
+        ->paginate($perpage);
         return response()->json([
             'message'=>'doctors retrieved successfully',
             'data'=>$doctors
@@ -77,6 +90,13 @@ class DoctorController extends Controller
         return response()->json([
             'message'=>'doctor added successfully',
             'doctor'=>$user,],201);
+    }
+    public function destroy()
+    {
+        $doctors=User::where('role_id',2)->delete();
+        return response()->json([
+            'message'=>'Doctors deleted successfully'
+        ],200);
     }
    
 }
