@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\User\LookupController;
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\Library\LibraryController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
+use App\Http\Controllers\Api\Proposal\ProposalController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
 use App\Http\Controllers\Api\Team\TeamController;
 use Illuminate\Http\Request;
@@ -25,6 +26,10 @@ Route::get('/library/favorites', [LibraryController::class, 'favorites']);
 
 Route::get('/my-team', [TeamController::class, 'index']);
 Route::post('/my-team/leave', [TeamController::class, 'leave']);
+
+// Proposals
+    Route::get('/proposal/create', [ProposalController::class, 'create']);
+    Route::post('/proposal/submit', [ProposalController::class, 'store']);
 
 
 

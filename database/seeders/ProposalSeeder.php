@@ -26,6 +26,7 @@ class ProposalSeeder extends Seeder
                 'title' => 'AI Graduation Project ' . $team->id,
                 'description' => 'Smart AI based system.',
                 'problem_statement' => 'How to leverage AI to solve real-world problems?',
+                'solution' => 'By developing an intelligent system that can analyze data and provide actionable insights.',
                 'technologies' => 'Laravel, Flutter, AI',
                 'status' => 'approved',
                 'decided_by_admin_id' => $admin?->id,
