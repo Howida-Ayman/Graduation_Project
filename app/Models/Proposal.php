@@ -16,6 +16,7 @@ class Proposal extends Model
         'problem_statement',
         'solution',
         'technologies',
+        'category',
         'attachment_file',
         'image_url',
         'status',

@@ -1,7 +1,7 @@
 <?php
 // app/Http/Requests/StoreProposalRequest.php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Api\User;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +24,7 @@ class StoreProposalRequest extends FormRequest
             'department_id' => 'required|exists:departments,id',
             'project_type_id' => 'required|exists:project_types,id',
             'technologies' => 'nullable|string',
+            'leader_user_id' => 'required|exists:users,id',
             'attachment' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ];
