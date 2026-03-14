@@ -3,8 +3,95 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Milestone extends Model
 {
-    
+    protected $table = 'milestones';
+
+    protected $fillable = [
+        'academic_year_id',
+        'title',
+        'description',
+        'sort_order',
+        'start_date',
+        'deadline',
+        'status',
+        'is_open',
+    ];
+
+    protected $casts = [
+        'start_date' => 'datetime',
+        'deadline' => 'datetime',
+        'is_open' => 'boolean',
+    ];
+
+    /**
+     * العلاقات
+     */
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function requirements(): HasMany
+    {
+        return $this->hasMany(MilestoneRequirement::class);
+    }
+
+    /**
+     * النطاقات (Scopes)
+     */
+    public function scopeOpen($query)
+    {
+        return $query->where('is_open', true);
+    }
+
+    public function scopeForAcademicYear($query, $academicYearId)
+    {
+        return $query->where('academic_year_id', $academicYearId);
+    }
+
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order');
+    }
+
+    /**
+     * الوظائف المساعدة
+     */
+    public function getStatusBadgeAttribute(): string
+    {
+        return match($this->status) {
+            'completed' => 'bg-green-100 text-green-800',
+            'on_progress' => 'bg-blue-100 text-blue-800',
+            'pending' => 'bg-yellow-100 text-yellow-800',
+            default => 'bg-gray-100 text-gray-800',
+        };
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        return $this->deadline && $this->deadline->isPast() && $this->status !== 'completed';
+    }
+
+    public function getProgressAttribute(): float
+    {
+        if ($this->status === 'completed') {
+            return 100;
+        }
+
+        $totalRequirements = $this->requirements()->count();
+        if ($totalRequirements === 0) {
+            return 0;
+        }
+
+        $completedRequirements = $this->requirements()
+            ->whereHas('submissions', function($q) {
+                $q->whereNotNull('graded_at');
+            })->count();
+
+        return round(($completedRequirements / $totalRequirements) * 100, 2);
+    }
 }

@@ -97,7 +97,7 @@ class ProposalController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Proposal submitted and leader assigned successfully',
+            'message' => 'Your Idea has been submitted successfully',
             'data' => [
                 'proposal_id' => $proposal->id,
                 'team_id' => $team->id,
