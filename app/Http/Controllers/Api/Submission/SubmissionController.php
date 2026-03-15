@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\Submission;
 
 use App\Http\Controllers\Controller;
 use App\Models\Milestone;
-use App\Models\MilestoneRequirement;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
 use App\Models\TeamMembership;
@@ -14,14 +13,10 @@ use Illuminate\Support\Facades\Storage;
 
 class SubmissionController extends Controller
 {
-    /**
-     * جلب الـ requirements المتاحة للفريق
-     */
-    public function getTeamRequirements(Request $request)
+    public function getActiveMilestones(Request $request)
     {
         $user = $request->user();
 
-        // 1. نجيب الفريق بتاع المستخدم
         $membership = TeamMembership::where('student_user_id', $user->id)
             ->where('status', 'active')
             ->first();
@@ -33,48 +28,37 @@ class SubmissionController extends Controller
             ], 403);
         }
 
-        // 2. نجيب الـ milestones المفتوحة مع الـ requirements
-        $milestones = Milestone::with(['requirements' => function($q) use ($membership) {
-            $q->withExists(['submissions as has_submission' => function($sub) use ($membership) {
-                $sub->where('team_id', $membership->team_id);
-            }]);
-        }])
-        ->where('is_open', true)
-        ->orderBy('sort_order')
-        ->get();
+        $milestones = Milestone::where('status', 'on_progress')
+            ->where('is_open', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'title', 'description', 'deadline']);
 
-        // 3. تجهيز البيانات للـ Frontend
         return response()->json([
             'success' => true,
-            'data' => $milestones->map(function($milestone) {
+            'data' => $milestones->map(function($milestone) use ($membership) {
+                $hasSubmission = Submission::where('milestone_id', $milestone->id)
+                    ->where('team_id', $membership->team_id)
+                    ->exists();
+
                 return [
                     'id' => $milestone->id,
                     'title' => $milestone->title,
+                    'description' => $milestone->description,
                     'deadline' => $milestone->deadline,
-                    'status' => $milestone->status,
-                    'requirements' => $milestone->requirements->map(function($req) {
-                        return [
-                            'id' => $req->id,
-                            'requirement' => $req->requirement,
-                            'can_submit' => !$req->has_submission, // لو مسلمش قبل كده
-                        ];
-                    }),
+                    'can_submit' => !$hasSubmission,
+                    'has_submission' => $hasSubmission,
                 ];
             })
         ]);
     }
 
-    /**
-     * رفع submission جديد
-     */
-    public function upload(Request $request)
+    public function uploadSubmission(Request $request)
     {
         $user = $request->user();
 
         DB::beginTransaction();
 
         try {
-            // 1. نجيب الفريق
             $membership = TeamMembership::where('student_user_id', $user->id)
                 ->where('status', 'active')
                 ->first();
@@ -86,58 +70,52 @@ class SubmissionController extends Controller
                 ], 403);
             }
 
-            // 2. التحقق من البيانات
             $request->validate([
-                'milestone_requirement_id' => 'required|exists:milestone_requirements,id',
+                'milestone_id' => 'required|exists:milestones,id',
                 'notes' => 'nullable|string|max:1000',
                 'files' => 'required|array|min:1',
-                'files.*' => 'required|file|max:20480', // 20MB
+                'files.*' => 'required|file|max:20480',
             ]);
 
-            // 3. التأكد إن الـ requirement موجود ومفتوح
-            $requirement = MilestoneRequirement::with('milestone')
-                ->where('id', $request->milestone_requirement_id)
-                ->whereHas('milestone', function($q) {
-                    $q->where('is_open', true);
-                })
+            $milestone = Milestone::where('id', $request->milestone_id)
+                ->where('status', 'on_progress')
+                ->where('is_open', true)
                 ->first();
 
-            if (!$requirement) {
+            if (!$milestone) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This requirement is not available for submission'
+                    'message' => 'This milestone is not available for submission'
                 ], 400);
             }
 
-            // 4. التأكد إن الفريق مقدمش submission قبل كده
-            $existing = Submission::where('milestone_requirement_id', $request->milestone_requirement_id)
+            $existing = Submission::where('milestone_id', $request->milestone_id)
                 ->where('team_id', $membership->team_id)
                 ->exists();
 
             if ($existing) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Your team already submitted this requirement'
+                    'message' => 'Your team already submitted this milestone'
                 ], 400);
             }
 
-            // 5. إنشاء الـ submission
             $submission = Submission::create([
-                'milestone_requirement_id' => $request->milestone_requirement_id,
+                'milestone_id' => $request->milestone_id,
                 'team_id' => $membership->team_id,
                 'submitted_by_user_id' => $user->id,
                 'notes' => $request->notes,
             ]);
 
-            // 6. رفع الملفات
             $uploadedFiles = [];
+
             foreach ($request->file('files') as $file) {
                 $originalName = $file->getClientOriginalName();
-                $path = $file->store('submissions/' . $membership->team_id, 'public');
+                $path = $file->store('submissions/' . $membership->team_id . '/' . $submission->id, 'public');
 
                 $submissionFile = SubmissionFile::create([
                     'submission_id' => $submission->id,
-                    'file_url' => Storage::url($path),
+                    'file_url' => asset('storage/' . $path),
                     'original_name' => $originalName,
                     'uploaded_at' => now(),
                 ]);
@@ -153,9 +131,11 @@ class SubmissionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Task uploaded successfully',
+                'message' => 'Submission uploaded successfully',
                 'data' => [
                     'submission_id' => $submission->id,
+                    'milestone_id' => $milestone->id,
+                    'files_count' => count($uploadedFiles),
                     'files' => $uploadedFiles,
                 ]
             ], 201);

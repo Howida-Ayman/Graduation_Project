@@ -8,7 +8,7 @@ class Submission extends Model
 {
     //
      protected $fillable = [
-        'milestone_requirement_id',
+        'milestone_id',
         'team_id',
         'submitted_by_user_id',
         'notes',
@@ -23,9 +23,9 @@ class Submission extends Model
         'graded_at' => 'datetime',
     ];
 
-    public function requirement()
+   public function milestone()
     {
-        return $this->belongsTo(MilestoneRequirement::class, 'milestone_requirement_id');
+        return $this->belongsTo(Milestone::class);
     }
 
     public function team()

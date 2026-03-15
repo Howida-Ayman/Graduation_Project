@@ -33,10 +33,8 @@ Route::post('/my-team/leave', [TeamController::class, 'leave']);
 Route::get('/proposal/form-data', [ProposalFormController::class, 'getFormData']);
 Route::post('/proposal/submit', [ProposalController::class, 'store']);
 
-    Route::get('/team/requirements', [SubmissionController::class, 'getTeamRequirements']);
-    // رفع submission جديد
-    Route::post('/submission/upload', [SubmissionController::class, 'upload']);
-
+    Route::get('/milestones/active', [SubmissionController::class, 'getActiveMilestones']);
+    Route::post('/submission/upload', [SubmissionController::class, 'uploadSubmission']);
 
 
 });
