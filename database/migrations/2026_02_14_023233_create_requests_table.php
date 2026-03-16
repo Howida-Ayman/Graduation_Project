@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->foreignId('from_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
-            $table->foreignId('to_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
-            $table->enum('request_type', ['team_join','supervision']);
+            $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate(); // to join team
+            $table->foreignId('from_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();  // who sent the request
+            $table->foreignId('to_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();  // who receives the request (team leader or supervisor)
+            $table->enum('request_type', ['team_join','team_form','supervision']); 
             $table->enum('status', ['pending','accepted','rejected'])->default('pending');
             $table->timestamps();
 

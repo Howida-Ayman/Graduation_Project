@@ -46,7 +46,7 @@ public function run(): void
                 'AI, Python',
                 'Node.js, Vue'
             ]),
-            'created_by_admin_id' => $admins->random()->id,
+            // 'created_by_admin_id' => $admins->random()->id,
             'is_active' => true,
         ]);
     }

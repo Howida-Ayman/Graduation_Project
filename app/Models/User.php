@@ -78,6 +78,18 @@ public function role()
          ->wherePivot('ended_at', null);  // الفرق اللي لسه بيشرف عليها
     }
 
+    // التسليمات اللي المستخدم قدمها
+public function submissions()
+{
+    return $this->hasMany(Submission::class, 'submitted_by_user_id');
+}
+
+// التسليمات اللي المستخدم صححها
+public function gradedSubmissions()
+{
+    return $this->hasMany(Submission::class, 'graded_by_user_id');
+}
+
 
 
 }

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('submissions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('milestone_requirement_id')->constrained('milestone_requirements')->cascadeOnDelete()->cascadeOnUpdate();
+            $table->foreignId('milestone_id')->constrained('milestones')->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
 
             $table->foreignId('submitted_by_user_id')
@@ -34,7 +34,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['milestone_requirement_id']);
+            $table->index(['milestone_id']);
             $table->index(['team_id']);
             $table->index(['submitted_by_user_id']);
             $table->index(['graded_by_user_id']);

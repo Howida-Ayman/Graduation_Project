@@ -25,14 +25,11 @@ return new class extends Migration
 
             $table->foreignId('project_type_id')->constrained('project_types')->restrictOnDelete()->cascadeOnUpdate();
 
-            $table->foreignId('suggested_project_id')->nullable()
-                ->constrained('suggested_projects')
-                ->nullOnDelete()
-                ->cascadeOnUpdate();
-
             $table->string('title');
             $table->text('description');
             $table->text('problem_statement')->nullable();
+            $table->text('solution')->nullable();
+            $table->string('category')->nullable();
             $table->text('technologies')->nullable();
             $table->string('attachment_file')->nullable();
             $table->string('image_url')->nullable();
