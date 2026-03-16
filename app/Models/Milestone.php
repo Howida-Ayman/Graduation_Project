@@ -11,10 +11,9 @@ class Milestone extends Model
     protected $table = 'milestones';
 
     protected $fillable = [
-        'academic_year_id',
         'title',
         'description',
-        'sort_order',
+        'phase_number',
         'start_date',
         'deadline',
         'status',

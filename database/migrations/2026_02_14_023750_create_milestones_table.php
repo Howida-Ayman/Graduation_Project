@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('milestones', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->string('title');
             $table->text('description')->nullable();
             $table->unsignedSmallInteger('phase_number');
@@ -23,8 +22,8 @@ return new class extends Migration
             $table->boolean('is_open')->default(true);
             $table->timestamps();
 
-            $table->unique(['academic_year_id', 'phase_number']);
-            $table->index(['academic_year_id', 'status']);
+            $table->unique('phase_number');
+            $table->index( 'status');
             $table->index(['start_date']);
             $table->index(['deadline']);
             $table->index(['is_open']);

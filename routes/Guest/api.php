@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AcademicYearsController;
 use App\Http\Controllers\Api\Admin\DepartmentController;
+use App\Http\Controllers\Api\Admin\ProjectRuleController;
 use App\Http\Controllers\Api\Library\LibraryController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
@@ -33,3 +34,5 @@ Route::get('project-types',[LookupController::class,'getprojectTypes']);
 Route::get('departments',[DepartmentController::class,'index'])->name('departments.index');
 //get academic years
  Route::get('academic-years',[AcademicYearsController::class,'index'])->name('academic-years.index');
+ //get project_rules
+ Route::get('/project_rules',[ProjectRuleController::class,'index']);

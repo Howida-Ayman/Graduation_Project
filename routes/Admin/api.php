@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\AcademicYearsController;
 use App\Http\Controllers\Api\Admin\DepartmentController;
 use App\Http\Controllers\Api\Admin\DoctorController;
+use App\Http\Controllers\Api\Admin\MilestoneController;
 use App\Http\Controllers\Api\Admin\ProjectRuleController;
 use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
@@ -45,6 +46,8 @@ Route::prefix('admin')->group(function(){
     Route::put('/{id}/update',[StudentController::class,'update'])->name('student.update'); 
     Route::delete('/delete',[StudentController::class,'destroy']);
     });
+    //delete user(student or doctor or TA)
+    Route::delete('/{id}/user/delete',[StudentController::class,'deleteUser']);
 
     //Departments
     Route::prefix('departments')->group(function(){
@@ -61,7 +64,6 @@ Route::prefix('admin')->group(function(){
 
     //team & project rules
     Route::prefix('project_rules')->group(function(){
-        Route::get('/',[ProjectRuleController::class,'index']);
         Route::put('store/team rules',[ProjectRuleController::class,'UpdateTeamRules']);
         Route::post('/{section}',[ProjectRuleController::class,'StoreRules']);
         Route::delete('/{id}/delete',[ProjectRuleController::class,'deleteRule']);
@@ -73,7 +75,9 @@ Route::prefix('admin')->group(function(){
         Route::put('{id}/update',action: [SuggestedProjectController::class,'update']);
         Route::delete('{id}/delete',action: [SuggestedProjectController::class,'destroy']);
     });
-    //delete user(student or doctor or TA)
-    Route::delete('/{id}/user/delete',[StudentController::class,'deleteUser']);
+    //milestones 
+    Route::prefix('milestones')->group(function(){
+        Route::post('/',[MilestoneController::class,'store']);
+    });
 });
 });
