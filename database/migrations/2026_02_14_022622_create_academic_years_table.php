@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('academic_years', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->unique(); // e.g. 2025/2026
+            $table->string('code')->unique(); // e.g. 2025-2026
+            $table->boolean('is_active')->default(false);
             $table->timestamps();
         });
     }

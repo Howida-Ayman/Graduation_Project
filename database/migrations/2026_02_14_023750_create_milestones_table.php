@@ -16,14 +16,14 @@ return new class extends Migration
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->unsignedSmallInteger('sort_order');
+            $table->unsignedSmallInteger('phase_number');
             $table->dateTime('start_date');
             $table->dateTime('deadline');
             $table->enum('status',['completed','on_progress','pending']);
             $table->boolean('is_open')->default(true);
             $table->timestamps();
 
-            $table->unique(['academic_year_id', 'sort_order']);
+            $table->unique(['academic_year_id', 'phase_number']);
             $table->index(['academic_year_id', 'status']);
             $table->index(['start_date']);
             $table->index(['deadline']);

@@ -9,7 +9,7 @@ class AcademicYear extends Model {
     use HasFactory;
 
     protected $fillable = [
-        'code',
+        'code','is_active'
     ];
 
     public function students() {

@@ -56,6 +56,7 @@ Route::prefix('admin')->group(function(){
         Route::prefix('academic-years')->group(function(){
         Route::post('/',[AcademicYearsController::class,'store'])->name('academic-years.store');
         Route::put('/{id}/update',[AcademicYearsController::class,'update'])->name('academic-years.update');
+        Route::put('/{id}/activate',[AcademicYearsController::class,'setActive'])->name('academic-years.activate');
     });
 
     //team & project rules
