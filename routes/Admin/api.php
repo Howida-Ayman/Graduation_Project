@@ -78,6 +78,12 @@ Route::prefix('admin')->group(function(){
     //milestones 
     Route::prefix('milestones')->group(function(){
         Route::post('/',[MilestoneController::class,'store']);
+        Route::post('/{id}/reopen',[MilestoneController::class,'reopen']);
+        Route::put('/{id}/update',[MilestoneController::class,'update']);
+        Route::delete('/{id}/delete',[MilestoneController::class,'destroy']);
+        Route::put('/{id}/add/notes',[MilestoneController::class,'storeNote']);
     });
 });
 });
+// get milestones by status
+Route::get('milestones/{status}',[MilestoneController::class,'milestonesByStatus'])->middleware(['auth:sanctum']);

@@ -18,11 +18,12 @@ class Milestone extends Model
         'deadline',
         'status',
         'is_open',
+        'notes'
     ];
 
     protected $casts = [
-        'start_date' => 'datetime',
-        'deadline' => 'datetime',
+        'start_date' => 'date:Y-m-d',
+        'deadline' => 'date:Y-m-d',
         'is_open' => 'boolean',
     ];
 

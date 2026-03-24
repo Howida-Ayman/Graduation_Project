@@ -19,7 +19,8 @@ return new class extends Migration
             $table->dateTime('start_date');
             $table->dateTime('deadline');
             $table->enum('status',['completed','on_progress','pending']);
-            $table->boolean('is_open')->default(true);
+            $table->boolean('is_open')->default(false);
+            $table->text('notes')->nullable();
             $table->timestamps();
 
             $table->unique('phase_number');

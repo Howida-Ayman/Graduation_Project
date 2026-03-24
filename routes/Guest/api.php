@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AcademicYearsController;
 use App\Http\Controllers\Api\Admin\DepartmentController;
+use App\Http\Controllers\Api\Admin\MilestoneController;
 use App\Http\Controllers\Api\Admin\ProjectRuleController;
 use App\Http\Controllers\Api\Library\LibraryController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
@@ -36,3 +37,5 @@ Route::get('departments',[DepartmentController::class,'index'])->name('departmen
  Route::get('academic-years',[AcademicYearsController::class,'index'])->name('academic-years.index');
  //get project_rules
  Route::get('/project_rules',[ProjectRuleController::class,'index']);
+ //get milestones
+ Route::get('/milestones',[MilestoneController::class,'index']);
