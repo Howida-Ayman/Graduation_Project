@@ -25,6 +25,7 @@ class Milestone extends Model
         'start_date' => 'date:Y-m-d',
         'deadline' => 'date:Y-m-d',
         'is_open' => 'boolean',
+        'status' => 'string',
     ];
 
     /**

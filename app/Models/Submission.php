@@ -12,6 +12,8 @@ class Submission extends Model
         'team_id',
         'submitted_by_user_id',
         'notes',
+        'submitted_at',
+        'team_status',
         'graded_by_user_id',
         'score',
         'feedback',

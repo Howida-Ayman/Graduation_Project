@@ -34,15 +34,18 @@ Route::post('/my-team/leave', [TeamController::class, 'leave']);
 Route::get('/proposal/form-data', [ProposalFormController::class, 'getFormData']);
 Route::post('/proposal/submit', [ProposalController::class, 'store']);
 
-Route::get('/milestones/active', [SubmissionController::class, 'getActiveMilestones']);
+//milestone active
+Route::get('/milestone/active', [SubmissionController::class, 'getActiveMilestones']);
 Route::post('/submission/upload', [SubmissionController::class, 'uploadSubmission']);
+ Route::get('/team/milestones/status', [SubmissionController::class, 'getTeamMilestonesWithStatus']);
+
 
 Route::get('/notifications', [NotificationController::class, 'index']);
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 
 
-});
 
+});
 
 

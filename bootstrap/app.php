@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // ✅ أضيفي السطر ده
+        $middleware->append([
+            \App\Http\Middleware\CatchErrorsMiddleware::class,
+        ]);
+        
         $middleware->alias([
             'admin'=>\App\Http\Middleware\AdminMiddleware::class,
             'doctor'=>\App\Http\Middleware\DoctorMiddleware::class,
