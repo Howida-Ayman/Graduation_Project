@@ -34,7 +34,7 @@ return new class extends Migration
             $table->string('attachment_file')->nullable();
             $table->string('image_url')->nullable();
 
-            $table->enum('status', ['pending','approved','rejected'])->default('pending');
+            $table->enum('status', ['pending','approved','rejected','cancelled'])->default('pending');
 
             $table->foreignId('decided_by_admin_id')->nullable()
                 ->constrained('users')

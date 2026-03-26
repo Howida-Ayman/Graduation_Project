@@ -29,8 +29,12 @@ Route::get('academic-years', [LookupController::class, 'academicYears']);
 Route::get('departments', [LookupController::class, 'departments']);
 Route::get('/library/favorites', [LibraryController::class, 'favorites']);
 
+
+//teams
 Route::get('/my-team', [TeamController::class, 'index']);
 Route::post('/my-team/leave', [TeamController::class, 'leave']);
+Route::post('/my-team/transfer-leadership', [TeamController::class, 'transferLeadership']);
+
 
 // Proposals
 Route::get('/proposal/form-data', [ProposalFormController::class, 'getFormData']);

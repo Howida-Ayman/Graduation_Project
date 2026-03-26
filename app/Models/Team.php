@@ -32,10 +32,17 @@ public function department()
         return $this->belongsTo(User::class, 'leader_user_id');
     }
 
-    public function members()
-    {
-        return $this->hasMany(TeamMembership::class);
-    }
+public function members()
+{
+    return $this->hasMany(TeamMembership::class)
+        ->where('status', 'active'); // 👈 أضيفي شرط النشاط
+}
+
+public function activeMembers()
+{
+    return $this->hasMany(TeamMembership::class)
+        ->where('status', 'active');
+}
 
     // ✅ العلاقة الجديدة مع المشرفين
     public function supervisors()
