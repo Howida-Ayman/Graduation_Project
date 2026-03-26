@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Team;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProjectRule;
 use App\Models\Proposal;
 use App\Models\TeamMembership;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class TeamController extends Controller
                 ->whereIn('status', ['approved', 'completed'])
                 ->latest()
                 ->first();
+            $projectRules = ProjectRule::getCurrent();
 
             return response()->json([
                 'success' => true,
@@ -54,6 +56,9 @@ class TeamController extends Controller
                         'academic_year' => $team->academicYear?->code,
                         'department' => $team->department?->name,
                         'leader_id' => $team->leader_user_id,
+                        'min_members' => $projectRules?->min_team_size,
+                        'max_members' => $projectRules?->max_team_size,
+                        'team_formation_deadline' => $projectRules?->team_formation_deadline,
                     ],
                     'project' => $proposal ? [
                         'id' => $proposal->id,
@@ -116,7 +121,6 @@ public function leave(Request $request)
         $team = $membership->team;
         $isLeader = ($team->leader_user_id == $user->id);
         
-        // شرط: لو الفريق عنده proposal approved، ممنوع المغادرة
         $hasApprovedProposal = Proposal::where('team_id', $team->id)
             ->where('status', 'approved')
             ->exists();
@@ -128,16 +132,15 @@ public function leave(Request $request)
             ], 403);
         }
         
-        // جلب عدد الأعضاء النشطين
         $activeMembers = TeamMembership::where('team_id', $team->id)
             ->where('status', 'active')
             ->get();
         
         $activeMembersCount = $activeMembers->count();
+        $minTeamSize = ProjectRule::getMinTeamSize();
         
-        // لو الفريق فيه عضوين أو أقل، والواحد غادر -> يتلغي الفريق
-        if ($activeMembersCount <= 2) {
-            // حذف كل حاجة
+        // لو العدد هيقل عن الحد الأدنى، يتلغي الفريق
+        if ($activeMembersCount - 1 < $minTeamSize) {
             DB::table('previous_projects')->where('team_id', $team->id)->delete();
             Proposal::where('team_id', $team->id)->update(['status' => 'cancelled']);
             TeamMembership::where('team_id', $team->id)->delete();
@@ -153,10 +156,7 @@ public function leave(Request $request)
             ]);
         }
         
-        // هنا: الفريق فيه 3 أعضاء أو أكثر
-        
         if ($isLeader) {
-            // نقل القيادة لأول عضو نشط تاني
             $newLeader = $activeMembers->where('student_user_id', '!=', $user->id)->first();
             
             if ($newLeader) {
@@ -173,7 +173,6 @@ public function leave(Request $request)
             }
         }
         
-        // العضو الحالي يغادر
         $membership->status = 'left';
         $membership->left_at = now();
         $membership->save();

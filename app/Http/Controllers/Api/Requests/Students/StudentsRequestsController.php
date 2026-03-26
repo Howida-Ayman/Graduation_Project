@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Requests\Students;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProjectRule;
 use App\Models\Request;
 use App\Models\Team;
 use App\Models\User;
@@ -12,11 +13,16 @@ use Illuminate\Support\Facades\DB;
 
 class StudentsRequestsController extends Controller
 {
-public function availableTeams()
+    /**
+     * الفرق المتاحة للانضمام
+     */
+    public function availableTeams()
     {
+        $maxTeamSize = ProjectRule::getMaxTeamSize();
+        
         $teams = Team::with(['department', 'leader', 'members.user'])
             ->withCount('members')
-            ->having('members_count', '<', 6)
+            ->having('members_count', '<', $maxTeamSize)
             ->get(['id', 'leader_user_id', 'department_id']);
         
         $user = request()->user();
@@ -28,14 +34,14 @@ public function availableTeams()
         
         return response()->json([
             'success' => true,
-            'data' => $teams->map(function($team) use ($sentTeamRequests) {
+            'data' => $teams->map(function($team) use ($sentTeamRequests, $maxTeamSize) {
                 return [
                     'id' => $team->id,
                     'leader_name' => $team->leader?->full_name,
                     'leader_image' => $team->leader?->profile_image_url,
                     'current_members' => $team->members_count,
-                    'max_members' => 6,
-                    'has_slot' => $team->members_count < 6,
+                    'max_members' => $maxTeamSize,
+                    'has_slot' => $team->members_count < $maxTeamSize,
                     'can_request' => !in_array($team->id, $sentTeamRequests),
                     'members' => $team->members->map(function($member) {
                         return [
@@ -125,7 +131,7 @@ public function availableTeams()
                     'message' => 'Only team leader can send invites'
                 ], 403);
             }
-
+            
             $team_id = $membership->team_id;
             
             $targetHasTeam = TeamMembership::where('student_user_id', $request->to_user_id)
@@ -156,8 +162,9 @@ public function availableTeams()
                 ], 400);
             }
             
+            $maxTeamSize = ProjectRule::getMaxTeamSize();
             $team = Team::withCount('members')->find($request->team_id);
-            if ($team->members_count >= 6) {
+            if ($team->members_count >= $maxTeamSize) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Team is full'
@@ -396,7 +403,4 @@ public function availableTeams()
             ], 500);
         }
     }
-
-
-
 }
