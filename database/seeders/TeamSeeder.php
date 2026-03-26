@@ -14,7 +14,7 @@ class TeamSeeder extends Seeder
     {
         $year = AcademicYear::first();
         $departments = Department::all();
-        $students = User::where('role_id', 2)->get(); // الطلاب
+        $students = User::where('role_id', 4)->get(); // الطلاب
 
         foreach ($departments as $department) {
 

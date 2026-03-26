@@ -77,8 +77,14 @@ public function department()
     {
         return $this->hasOne(Proposal::class)
             ->whereIn('status', ['approved', 'completed'])
-            ->latest();
+           ->latest();
     }
+
+    // في app/Models/Team.php
+public function teamSupervisors()
+{
+    return $this->hasMany(TeamSupervisor::class);
+}
 
 
 

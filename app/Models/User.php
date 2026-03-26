@@ -67,16 +67,11 @@ public function role()
     return $this->belongsTo(Role::class);
 }
 
-    public function supervisedTeams()
-    {
-        return $this->belongsToMany(
-            Team::class,
-            'team_supervisors',
-            'supervisor_user_id',
-            'team_id'
-        )->withPivot(['supervisor_role', 'assigned_at', 'ended_at'])
-         ->wherePivot('ended_at', null);  // الفرق اللي لسه بيشرف عليها
-    }
+// في app/Models/User.php
+public function supervisedTeams()
+{
+    return $this->hasMany(TeamSupervisor::class, 'supervisor_user_id');
+}
 
     // التسليمات اللي المستخدم قدمها
 public function submissions()
@@ -89,6 +84,54 @@ public function gradedSubmissions()
 {
     return $this->hasMany(Submission::class, 'graded_by_user_id');
 }
+
+public function teamMemberships()
+    {
+        return $this->hasMany(TeamMembership::class, 'student_user_id');
+    }
+
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'team_memberships', 'student_user_id', 'team_id')
+            ->withPivot('role_in_team', 'status', 'joined_at', 'left_at')
+            ->wherePivot('status', 'active');
+    }
+
+    public function currentTeam()
+    {
+        return $this->teams()->first();
+    }
+
+    public function isInTeam(): bool
+    {
+        return $this->teamMemberships()
+            ->where('status', 'active')
+            ->exists();
+    }
+
+    public function isTeamLeader(): bool
+    {
+        $membership = $this->teamMemberships()
+            ->where('status', 'active')
+            ->first();
+        
+        if (!$membership) {
+            return false;
+        }
+        
+        $team = $membership->team;
+        return $team && $team->leader_user_id == $this->id;
+    }
+
+    public function sentRequests()
+    {
+        return $this->hasMany(Request::class, 'from_user_id');
+    }
+
+    public function receivedRequests()
+    {
+        return $this->hasMany(Request::class, 'to_user_id');
+    }
 
 
 
