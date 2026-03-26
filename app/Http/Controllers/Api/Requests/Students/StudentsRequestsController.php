@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\User;
+namespace App\Http\Controllers\Api\Requests\Students;
 
 use App\Http\Controllers\Controller;
 use App\Models\Request;
@@ -10,19 +10,15 @@ use App\Models\TeamMembership;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 
-class RequestController extends Controller
+class StudentsRequestsController extends Controller
 {
-    /**
-     * الفرق المتاحة للانضمام
-     */
-    public function availableTeams()
+public function availableTeams()
     {
         $teams = Team::with(['department', 'leader', 'members.user'])
             ->withCount('members')
             ->having('members_count', '<', 6)
             ->get(['id', 'leader_user_id', 'department_id']);
         
-        // جلب الطلبات المرسلة من المستخدم عشان نعرف مين بعت طلب قبل كده
         $user = request()->user();
         $sentTeamRequests = Request::where('from_user_id', $user->id)
             ->where('status', 'pending')
@@ -36,6 +32,7 @@ class RequestController extends Controller
                 return [
                     'id' => $team->id,
                     'leader_name' => $team->leader?->full_name,
+                    'leader_image' => $team->leader?->profile_image_url,
                     'current_members' => $team->members_count,
                     'max_members' => 6,
                     'has_slot' => $team->members_count < 6,
@@ -45,6 +42,7 @@ class RequestController extends Controller
                             'id' => $member->student_user_id,
                             'name' => $member->user?->full_name,
                             'track' => $member->user?->track_name,
+                            'profile_image' => $member->user?->profile_image_url,
                         ];
                     }),
                 ];
@@ -59,7 +57,6 @@ class RequestController extends Controller
     {
         $user = $request->user();
         
-        // جلب الطلبات المرسلة من المستخدم
         $sentRequests = Request::where('from_user_id', $user->id)
             ->where('status', 'pending')
             ->pluck('to_user_id')
@@ -70,7 +67,6 @@ class RequestController extends Controller
                 $q->where('status', 'active');
             });
         
-        // ✅ سيرش عام في الاسم والتخصص
         if ($request->search) {
             $search = '%' . $request->search . '%';
             $query->where(function($q) use ($search) {
@@ -79,7 +75,7 @@ class RequestController extends Controller
             });
         }
         
-        $students = $query->get(['id', 'full_name', 'track_name']);
+        $students = $query->get(['id', 'full_name', 'track_name', 'profile_image_url']);
         
         return response()->json([
             'success' => true,
@@ -88,6 +84,7 @@ class RequestController extends Controller
                     'id' => $student->id,
                     'name' => $student->full_name,
                     'track' => $student->track_name,
+                    'profile_image' => $student->profile_image_url,
                     'can_request' => !in_array($student->id, $sentRequests),
                 ];
             })
@@ -101,7 +98,6 @@ class RequestController extends Controller
     {
         $user = $request->user();
         
-        // التحقق من وجود فريق
         $membership = TeamMembership::where('student_user_id', $user->id)
             ->where('status', 'active')
             ->first();
@@ -115,7 +111,6 @@ class RequestController extends Controller
             'request_type' => 'required|in:team_join,team_form,team_invite',
         ]);
         
-        // منع الإرسال لنفس المستخدم
         if ($request->to_user_id == $user->id) {
             return response()->json([
                 'success' => false,
@@ -123,9 +118,7 @@ class RequestController extends Controller
             ], 400);
         }
         
-        // التحقق حسب نوع المستخدم
         if ($request->request_type == 'team_invite') {
-            // بس الـ Leader يقدر يبعت دعوات
             if (!$isLeader) {
                 return response()->json([
                     'success' => false,
@@ -135,7 +128,6 @@ class RequestController extends Controller
 
             $team_id = $membership->team_id;
             
-            // التأكد إن المستهدف مش في فريق
             $targetHasTeam = TeamMembership::where('student_user_id', $request->to_user_id)
                 ->where('status', 'active')
                 ->exists();
@@ -150,7 +142,6 @@ class RequestController extends Controller
         }
         
         if ($request->request_type == 'team_join') {
-            // اللي مش في فريق بس يقدر يطلب انضمام
             if ($hasTeam) {
                 return response()->json([
                     'success' => false,
@@ -158,7 +149,6 @@ class RequestController extends Controller
                 ], 400);
             }
             
-            // التأكد إن الفريق موجود ولديه مكان
             if (!$request->team_id) {
                 return response()->json([
                     'success' => false,
@@ -176,7 +166,6 @@ class RequestController extends Controller
         }
         
         if ($request->request_type == 'team_form') {
-            // اللي مش في فريق بس يقدر يطلب تكوين فريق
             if ($hasTeam) {
                 return response()->json([
                     'success' => false,
@@ -184,7 +173,6 @@ class RequestController extends Controller
                 ], 400);
             }
             
-            // التأكد إن المستهدف مش في فريق
             $targetHasTeam = TeamMembership::where('student_user_id', $request->to_user_id)
                 ->where('status', 'active')
                 ->exists();
@@ -241,13 +229,11 @@ class RequestController extends Controller
             ->where('to_user_id', $user->id)
             ->where('status', 'pending');
         
-        // ✅ فلتر حسب النوع
         if ($request->type == 'teams') {
             $query->whereNotNull('team_id');
         } elseif ($request->type == 'students') {
             $query->whereNull('team_id');
         }
-        // type = 'all' أو مفيش -> كل الطلبات
         
         $requests = $query->orderBy('created_at', 'desc')->get();
         
@@ -260,6 +246,7 @@ class RequestController extends Controller
                         'id' => $req->fromUser->id,
                         'name' => $req->fromUser->full_name,
                         'track' => $req->fromUser->track_name,
+                        'profile_image' => $req->fromUser->profile_image_url,
                     ],
                     'request_type' => $req->request_type,
                     'team' => $req->team ? [
@@ -293,6 +280,7 @@ class RequestController extends Controller
                         'id' => $req->toUser->id,
                         'name' => $req->toUser->full_name,
                         'track' => $req->toUser->track_name,
+                        'profile_image' => $req->toUser->profile_image_url,
                     ],
                     'request_type' => $req->request_type,
                     'team' => $req->team ? [
@@ -333,10 +321,8 @@ class RequestController extends Controller
         DB::beginTransaction();
         
         try {
-            // تحديث حالة الطلب
             $req->update(['status' => $request->status]);
             
-            // لو الطلب مقبول
             if ($request->status == 'accepted') {
                 if ($req->request_type == 'team_join') {
                     $team = Team::with('academicYear')->find($req->team_id);
@@ -351,7 +337,6 @@ class RequestController extends Controller
                     ]);
                 } 
                 elseif ($req->request_type == 'team_form') {
-                    // إنشاء فريق جديد
                     $team = Team::create([
                         'academic_year_id' => 1,
                         'department_id' => 1,
@@ -359,7 +344,6 @@ class RequestController extends Controller
                     ]);
                     $req->update(['team_id' => $team->id]);
                     
-                    // إضافة الـ leader
                     TeamMembership::create([
                         'team_id' => $team->id,
                         'academic_year_id' => $team->academic_year_id,
@@ -369,7 +353,6 @@ class RequestController extends Controller
                         'joined_at' => now(),
                     ]);
                     
-                    // إضافة العضو التاني
                     TeamMembership::create([
                         'team_id' => $team->id,
                         'academic_year_id' => $team->academic_year_id,
@@ -413,4 +396,7 @@ class RequestController extends Controller
             ], 500);
         }
     }
+
+
+
 }
