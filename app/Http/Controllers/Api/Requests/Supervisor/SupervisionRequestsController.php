@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Requests\Supervisor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Proposal;
 use App\Models\Request;
 use App\Models\Team;
 use App\Models\User;
@@ -37,6 +38,18 @@ public function availableSupervisors(HttpRequest $request)
                 'message' => 'Only the team leader can view available supervisors'
             ], 403);
         }
+
+            $hasApprovedProposal = Proposal::where('team_id', $team->id)
+        ->where('status', 'approved')
+        ->exists();
+    
+    if (!$hasApprovedProposal) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Your team must have an approved proposal first before requesting supervisors'
+        ], 403);
+    }
+    
         
         $query = User::whereIn('role_id', [2, 3])
             ->where('is_active', true);
@@ -111,6 +124,18 @@ public function availableSupervisors(HttpRequest $request)
                 'message' => 'Only the team leader can send supervision requests'
             ], 403);
         }
+         
+        $hasApprovedProposal = Proposal::where('team_id', $team->id)
+                ->where('status', 'approved')
+                ->exists();
+            
+            if (!$hasApprovedProposal) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your team must have an approved proposal first before requesting supervisors'
+                ], 403);
+            }
+    
         
         $request->validate([
             'supervisor_id' => 'required|exists:users,id',
