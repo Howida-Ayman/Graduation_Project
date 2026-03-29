@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('team_milestone_ststus', function (Blueprint $table) {
+        Schema::create('team_milestone_status', function (Blueprint $table) {
             $table->id();
             $table->foreignId('team_id')
                 ->constrained('teams')
@@ -28,7 +28,6 @@ return new class extends Migration
 
             $table->unique(['team_id', 'milestone_id']);
 
-            $table->timestamps();
         });
     }
 
@@ -37,6 +36,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('team_milestone_ststus');
+        Schema::dropIfExists('team_milestone_status');
     }
 };
