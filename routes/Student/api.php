@@ -42,7 +42,7 @@ Route::post('/proposal/submit', [ProposalController::class, 'store']);
 //milestone active
 Route::get('/milestone/active', [SubmissionController::class, 'getActiveMilestones']);
 Route::post('/submission/upload', [SubmissionController::class, 'uploadSubmission']);
- Route::get('/team/milestones/status', [SubmissionController::class, 'getTeamMilestonesWithStatus']);
+Route::get('/team/milestones/status', [SubmissionController::class, 'getTeamMilestonesWithStatus']);
 
 
 Route::get('/notifications', [NotificationController::class, 'index']);

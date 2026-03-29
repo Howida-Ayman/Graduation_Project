@@ -13,7 +13,6 @@ class Submission extends Model
         'submitted_by_user_id',
         'notes',
         'submitted_at',
-        'team_status',
         'graded_by_user_id',
         'score',
         'feedback',
@@ -44,7 +43,5 @@ class Submission extends Model
     {
         return $this->belongsTo(User::class, 'graded_by_user_id');
     }
-
-    
 
 }

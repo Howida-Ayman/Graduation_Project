@@ -95,4 +95,21 @@ class Milestone extends Model
 
         return round(($completedRequirements / $totalRequirements) * 100, 2);
     }
+    // العلاقة مع submissions
+    public function submissions()
+    {
+        return $this->hasMany(Submission::class);
+    }
+     // العلاقة مع team_milestones
+    public function teamMilestonestatus()
+    {
+        return $this->hasMany(TeamMilestonStstus::class);
+    }
+     // علاقة مباشرة مع teams
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'team_milestone_status')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
 }

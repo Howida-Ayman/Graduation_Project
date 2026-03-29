@@ -23,8 +23,7 @@ return new class extends Migration
 
             $table->text('notes')->nullable();
             $table->timestamp('submitted_at')->nullable();
-            $table->enum('team_status', ['on_track', 'pending', 'delayed'])
-                ->default('pending');
+            
 
             $table->foreignId('graded_by_user_id')->nullable()
                 ->constrained('users')

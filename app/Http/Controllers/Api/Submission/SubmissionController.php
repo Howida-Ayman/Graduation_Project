@@ -188,71 +188,71 @@ public function getActiveMilestones(Request $request)
         }
     }
 
-    /**
-     * جلب الميليستونز مع حالة الفريق (on_track, pending, delayed)
-     */
-  public function getTeamMilestonesWithStatus(Request $request)
-{
-    try {
-        $user = $request->user();
+//     /**
+//      * جلب الميليستونز مع حالة الفريق (on_track, pending, delayed)
+//      */
+//   public function getTeamMilestonesWithStatus(Request $request)
+// {
+//     try {
+//         $user = $request->user();
 
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not authenticated'
-            ], 401);
-        }
+//         if (!$user) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'User not authenticated'
+//             ], 401);
+//         }
 
-        $membership = TeamMembership::where('student_user_id', $user->id)
-            ->where('status', 'active')
-            ->first();
+//         $membership = TeamMembership::where('student_user_id', $user->id)
+//             ->where('status', 'active')
+//             ->first();
 
-        if (!$membership) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not in any team'
-            ], 403);
-        }
+//         if (!$membership) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'You are not in any team'
+//             ], 403);
+//         }
 
-        // ✅ استخدمي phase_number بدلاً من sort_order
-        $milestones = DB::select("
-            SELECT id, title, description, deadline
-            FROM milestones
-            WHERE status = 'on_progress'
-            ORDER BY phase_number ASC
-        ");
+//         // ✅ استخدمي phase_number بدلاً من sort_order
+//         $milestones = DB::select("
+//             SELECT id, title, description, deadline
+//             FROM milestones
+//             WHERE status = 'on_progress'
+//             ORDER BY phase_number ASC
+//         ");
 
-        $data = [];
-        foreach ($milestones as $milestone) {
-            $submission = DB::table('submissions')
-                ->where('milestone_id', $milestone->id)
-                ->where('team_id', $membership->team_id)
-                ->first();
+//         $data = [];
+//         foreach ($milestones as $milestone) {
+//             $submission = DB::table('submissions')
+//                 ->where('milestone_id', $milestone->id)
+//                 ->where('team_id', $membership->team_id)
+//                 ->first();
 
-            $data[] = [
-                'id' => $milestone->id,
-                'title' => $milestone->title,
-                'description' => $milestone->description,
-                'deadline' => $milestone->deadline,
-                'team_status' => $submission ? $submission->team_status : 'pending',
-                'submitted_at' => $submission->submitted_at ?? null,
-                'can_submit' => is_null($submission),
-                'has_submission' => !is_null($submission),
-            ];
-        }
+//             $data[] = [
+//                 'id' => $milestone->id,
+//                 'title' => $milestone->title,
+//                 'description' => $milestone->description,
+//                 'deadline' => $milestone->deadline,
+//                 'team_status' => $submission ? $submission->team_status : 'pending',
+//                 'submitted_at' => $submission->submitted_at ?? null,
+//                 'can_submit' => is_null($submission),
+//                 'has_submission' => !is_null($submission),
+//             ];
+//         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $data
-        ]);
+//         return response()->json([
+//             'success' => true,
+//             'data' => $data
+//         ]);
 
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ], 500);
-    }
-}
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'error' => $e->getMessage(),
+//             'file' => $e->getFile(),
+//             'line' => $e->getLine()
+//         ], 500);
+//     }
+// }
 }

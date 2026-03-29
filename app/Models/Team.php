@@ -92,7 +92,23 @@ public function teamSupervisors()
 {
     return $this->hasMany(TeamSupervisor::class);
 }
-
+// العلاقة مع submissions
+    public function submissions()
+    {
+        return $this->hasMany(Submission::class);
+    }
+    // العلاقة مع team_milestone_status
+    public function teamMilestonestats()
+    {
+        return $this->hasMany(TeamMilestonStstus::class);
+    }
+    // علاقة مباشرة مع milestones (through pivot)
+    public function milestones()
+    {
+        return $this->belongsToMany(Milestone::class, 'team_milestone_status')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
 
 
 
