@@ -14,12 +14,13 @@ return new class extends Migration
         Schema::create('team_projects', function (Blueprint $table) {
             
             $table->foreignId('team_id')->primary()->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
+            $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('proposal_id')->constrained('proposals')->restrictOnDelete()->cascadeOnUpdate();
             $table->decimal('final_score', 8, 2)->nullable();
             $table->string('image_url')->nullable();
             $table->timestamps();
 
-            $table->index(['proposal_id']);
+            $table->unique(['proposal_id']);
         });
     }
 

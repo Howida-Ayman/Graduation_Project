@@ -5,9 +5,11 @@ use App\Http\Controllers\Api\Admin\DepartmentController;
 use App\Http\Controllers\Api\Admin\DoctorController;
 use App\Http\Controllers\Api\Admin\MilestoneController;
 use App\Http\Controllers\Api\Admin\ProjectRuleController;
+use App\Http\Controllers\Api\Admin\ProposalController;
 use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
+use App\Http\Controllers\Api\Team\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -83,6 +85,11 @@ Route::prefix('admin')->group(function(){
         Route::delete('/{id}/delete',[MilestoneController::class,'destroy']);
         Route::put('/{id}/add/notes',[MilestoneController::class,'storeNote']);
     });
+
+    //teams
+    Route::get('/teams',[TeamController::class,'allTeams']);
+    //proposal
+    Route::put('/proposal/{id}/{status}',[ProposalController::class,'requestStatus']);
 });
 });
 // get milestones by status

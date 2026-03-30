@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TeamMilestonStstus extends Model
+class TeamMilestonStatus extends Model
 {
         protected $table = 'team_milestone_status';
 

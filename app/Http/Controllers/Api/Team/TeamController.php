@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api\Team;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
+use App\Models\Milestone;
 use App\Models\ProjectRule;
 use App\Models\Proposal;
+use App\Models\Team;
 use App\Models\TeamMembership;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class TeamController extends Controller
@@ -193,5 +197,25 @@ public function leave(Request $request)
             'error' => $e->getMessage()
         ], 500);
     }
+}
+public function allTeams()
+{
+   
+        $today=Carbon::now();
+        $current_milestone=Milestone::where('start_date','<=',$today)
+        ->where('deadline','>=',$today)
+        ->first();
+        $year=AcademicYear::where('is_active',1)->first();
+        $teams_onTrack=Team::with('teamMilestonestatus')->get()
+        ->map(function ($team) {
+        return [
+            'team_id' => $team->id,
+            'status' => $team->teamMilestonestatus->pluck('status')
+        ];
+    });
+        return response()->json([
+            'message'=>$teams_onTrack
+        ],200);
+    
 }
 }

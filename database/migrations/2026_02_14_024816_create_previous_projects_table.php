@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('previous_projects', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('team_id')->constrained('teams')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('proposal_id')->constrained('proposals')->restrictOnDelete()->cascadeOnUpdate();
             $table->decimal('final_score', 8, 2)->nullable();

@@ -15,7 +15,6 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-         dd('AdminMiddleware reached', $request->all());
         $user=$request->user();
         if($user->role_id != 1)
             {

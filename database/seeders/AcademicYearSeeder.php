@@ -14,15 +14,18 @@ class AcademicYearSeeder extends Seeder
      */
     public function run(): void
     {
-        $years = [
-            '2024-2025',
-            '2025-2026',
-            '2026-2027',
-        ];
+    $years = [
+    '2024-2025',
+    '2025-2026',
+    '2026-2027',
+];
 
-        foreach ($years as $year) {
-            AcademicYear::firstOrCreate(['code' => $year]);
-        }
+foreach ($years as $index => $year) {
+    AcademicYear::updateOrCreate(
+        ['code' => $year],
+        ['is_active' => $index === 0] // أول سنة = true
+    );
+}
     
 }
 }
