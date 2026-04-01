@@ -110,7 +110,10 @@ public function teamSupervisors()
             ->withTimestamps();
     }
 
-
+    public function graduationProject()
+    {
+        return $this->hasOne(GraduationProject::class, 'team_id');
+    }
 
 
 }

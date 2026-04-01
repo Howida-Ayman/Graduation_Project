@@ -87,7 +87,7 @@ Route::prefix('admin')->group(function(){
     });
 
     //teams
-    Route::get('/teams',[TeamController::class,'allTeams']);
+    Route::get('/teams/{milestone_id?}',[TeamController::class,'allTeams']);
     //proposal
     Route::put('/proposal/{id}/{status}',[ProposalController::class,'requestStatus']);
 });

@@ -11,7 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/api.php',
             __DIR__.'/../routes/admin/api.php',
             __DIR__.'/../routes/student/api.php',
-            __DIR__.'/../routes/doctor/api.php',
+            __DIR__.'/../routes/supervisor/api.php',
             __DIR__.'/../routes/ta/api.php',
             __DIR__.'/../routes/guest/api.php',
             ],
@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'=>\App\Http\Middleware\AdminMiddleware::class,
             'doctor'=>\App\Http\Middleware\DoctorMiddleware::class,
             'ta'=>\App\Http\Middleware\TAMiddleware::class,
+            'supervisor'=>\App\Http\Middleware\SupervisorMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -17,7 +17,7 @@ class Request extends Model
 
     protected $casts = [
         'status' => 'string',
-        'type' => 'string',
+        'request_type' => 'string',
     ];
 
     public function fromUser(): BelongsTo

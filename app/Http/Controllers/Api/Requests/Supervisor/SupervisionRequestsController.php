@@ -12,10 +12,12 @@ use App\Models\TeamSupervisor;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use App\Notifications\SupervisionRequestNotification;
+use Illuminate\Foundation\Auth\User as AuthUser;
+use Illuminate\Support\Carbon;
 
 class SupervisionRequestsController extends Controller
 {
-public function availableSupervisors(HttpRequest $request)
+    public function availableSupervisors(HttpRequest $request)
     {
         $user = $request->user();
         
@@ -39,7 +41,7 @@ public function availableSupervisors(HttpRequest $request)
             ], 403);
         }
 
-            $hasApprovedProposal = Proposal::where('team_id', $team->id)
+        $hasApprovedProposal = Proposal::where('team_id', $team->id)
         ->where('status', 'approved')
         ->exists();
     
@@ -215,6 +217,215 @@ public function availableSupervisors(HttpRequest $request)
             ], 500);
         }
     }
-    
+   public function getRequests(HttpRequest $request)
+{
+    $user = $request->user();
 
+    $query = Request::where('to_user_id', $user->id)
+        ->where('request_type', 'supervision')
+        ->with([
+            'team.department',
+            'team.members.user',
+            'team.graduationProject.proposal',
+        ]);
+
+    if ($request->filled('status') && in_array($request->status, ['pending', 'accepted', 'rejected'])) {
+        $query->where('status', $request->status);
+    }
+
+    if ($request->filled('department_id')) {
+        $query->whereHas('team', function ($q) use ($request) {
+            $q->where('department_id', $request->department_id);
+        });
+    }
+
+    // فلتر category
+ if ($request->filled('categories')) {
+    $categories = $request->categories;
+
+    if (!is_array($categories)) {
+        $categories = [$categories];
+    }
+
+    $query->whereHas('team.graduationProject.proposal', function ($q) use ($categories) {
+        $q->where(function ($subQ) use ($categories) {
+            foreach ($categories as $category) {
+                $subQ->orWhere('category', 'like', '%' . $category . '%');
+            }
+        });
+    });
 }
+
+    $requests = $query->latest()->get();
+
+    // فلتر team size بعد الجلب
+    if ($request->filled('team_size')) {
+        $teamSize = $request->team_size;
+
+        $requests = $requests->filter(function ($item) use ($teamSize) {
+            $count = $item->team?->members?->count() ?? 0;
+
+            return match ($teamSize) {
+                '1-3' => $count >= 1 && $count <= 3,
+                '4-5' => $count >= 4 && $count <= 5,
+                '5-6' => $count >= 5 && $count <= 6,
+                default => true,
+            };
+        })->values();
+    }
+
+    $formatted = $requests->map(function ($item) {
+        $team = $item->team;
+        $project = $team?->graduationProject;
+        $proposal = $project?->proposal;
+
+        return [
+            'id' => $item->id,
+            'status' => $item->status,
+            'request_type' => $item->request_type,
+            'requested_at' => optional($item->created_at)->format('M d, Y'),
+
+            'team' => [
+                'id' => $team?->id,
+                'department_id' => $team?->department_id,
+                'department_name' => $team?->department?->name,
+                'members_count' => $team?->members?->count() ?? 0,
+                'members' => $team?->members?->map(function ($member) {
+                    return [
+                        'id' => $member->student_user_id,
+                        'name' => $member->user?->full_name,
+                        'role_in_team' => $member->role_in_team,
+                    ];
+                })->values(),
+            ],
+
+            'project' => [
+                'title' => $proposal?->title,
+                'description' => $proposal?->description,
+                'problem_statement' => $proposal?->problem_statement,
+                'solution' => $proposal?->solution,
+                'image_url' => $project?->image_url ?? $proposal?->image_url,
+                'files' => $proposal?->attachment_file,
+                'technologies' => $proposal?->technologies,
+                'category' => $proposal?->category,
+            ],
+        ];
+    });
+
+    $baseSummary = Request::where('to_user_id', $user->id)
+        ->where('request_type', 'supervision');
+
+    return response()->json([
+        'message' => 'Requests retrieved successfully',
+        'summary' => [
+            'all' => (clone $baseSummary)->count(),
+            'pending' => (clone $baseSummary)->where('status', 'pending')->count(),
+            'accepted' => (clone $baseSummary)->where('status', 'accepted')->count(),
+            'rejected' => (clone $baseSummary)->where('status', 'rejected')->count(),
+        ],
+        'filters' => [
+            'categories' => $request->categories ?? [],
+            'team_size' => $request->team_size,
+        ],
+        'data' => $formatted,
+    ], 200);
+}
+
+   public function respondToRequest(HttpRequest $request, $id)
+    {
+    $request->validate([
+        'status' => 'required|in:accepted,rejected'
+    ]);
+
+    $user = $request->user();
+
+    DB::beginTransaction();
+
+    try {
+        $teamRequest = Request::where('to_user_id', $user->id)
+            ->where('request_type', 'supervision')
+            ->findOrFail($id);
+
+        if ($teamRequest->status !== 'pending') {
+            return response()->json([
+                'message' => 'This request has already been processed.'
+            ], 409);
+        }
+
+        $supervisorRole = $user->role_id == 2 ? 'doctor' : 'ta';
+
+        if ($request->status === 'accepted') {
+            // هل المستخدم ده متسجل بالفعل على نفس الفريق بنفس الدور؟
+            $alreadyAssignedToTeam = TeamSupervisor::where('team_id', $teamRequest->team_id)
+                ->where('supervisor_user_id', $user->id)
+                ->where('supervisor_role', $supervisorRole)
+                ->whereNull('ended_at')
+                ->exists();
+
+            if ($alreadyAssignedToTeam) {
+                return response()->json([
+                    'message' => 'You are already assigned to this team.'
+                ], 409);
+            }
+
+            // هل فيه دكتور أو معيد حالي بالفعل على الفريق؟
+            $roleAlreadyTaken = TeamSupervisor::where('team_id', $teamRequest->team_id)
+                ->where('supervisor_role', $supervisorRole)
+                ->whereNull('ended_at')
+                ->exists();
+
+            if ($roleAlreadyTaken) {
+                return response()->json([
+                    'message' => "This team already has an assigned {$supervisorRole}."
+                ], 409);
+            }
+        }
+
+        $teamRequest->update([
+            'status' => $request->status,
+        ]);
+
+        if ($request->status === 'accepted') {
+            TeamSupervisor::create([
+                'team_id' => $teamRequest->team_id,
+                'supervisor_user_id' => $user->id,
+                'supervisor_role' => $supervisorRole,
+                'assigned_at' => Carbon::now(),
+            ]);
+
+            // اختياري لكن مهم:
+            // نرفض أي طلبات pending أخرى لنفس الفريق ونفس الدور
+            Request::where('team_id', $teamRequest->team_id)
+                ->where('request_type', 'supervision')
+                ->where('status', 'pending')
+                ->where('id', '!=', $teamRequest->id)
+                ->whereHas('toUser', function ($q) use ($supervisorRole) {
+                    if ($supervisorRole === 'doctor') {
+                        $q->where('role_id', 2);
+                    } else {
+                        $q->where('role_id', 3);
+                    }
+                })
+                ->update([
+                    'status' => 'rejected'
+                ]);
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'message' => "Request {$request->status} successfully.",
+            'data' => $teamRequest->fresh()
+        ], 200);
+
+    } catch (\Throwable $th) {
+        DB::rollBack();
+
+        return response()->json([
+            'message' => $th->getMessage()
+        ], 500);
+    }
+}
+}
+
+
