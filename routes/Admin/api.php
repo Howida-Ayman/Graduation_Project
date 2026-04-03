@@ -89,6 +89,12 @@ Route::prefix('admin')->group(function(){
     //teams
     Route::prefix('teams')->group(function(){
         Route::get('/{milestone_id?}',[TeamController::class,'allTeams']);
+        Route::get('/view_team/{id}',[TeamController::class,'viewTeam']);
+    });
+    //final Discussion Commitee
+    Route::prefix('final_discussion')->group(function(){
+        Route::post('/',[TeamController::class,'store']);
+        Route::get('/',[TeamController::class,'index']);
     });
 
     //proposal

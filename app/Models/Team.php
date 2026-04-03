@@ -104,10 +104,10 @@ public function teamSupervisors()
     }
     // علاقة مباشرة مع milestones (through pivot)
     public function milestones()
-    {
-        return $this->belongsToMany(Milestone::class, 'team_milestone_status')
-            ->withPivot('status')
-            ->withTimestamps();
+    {   
+    return $this->belongsToMany(Milestone::class, 'team_milestone_status')
+        ->withPivot(['status', 'milestone_grade', 'graded_by_user_id', 'graded_at'])
+        ->withTimestamps();
     }
 
     public function graduationProject()

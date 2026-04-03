@@ -13,15 +13,10 @@ class Submission extends Model
         'submitted_by_user_id',
         'notes',
         'submitted_at',
-        'graded_by_user_id',
-        'score',
         'feedback',
-        'graded_at',
     ];
 
     protected $casts = [
-    'score' => 'decimal:2',
-    'graded_at' => 'datetime',
     'submitted_at' => 'datetime',
 ];
 
@@ -40,10 +35,7 @@ class Submission extends Model
         return $this->belongsTo(User::class, 'submitted_by_user_id');
     }
 
-    public function grader()
-    {
-        return $this->belongsTo(User::class, 'graded_by_user_id');
-    }
+    
     public function files()
     {
     return $this->hasMany(SubmissionFile::class);

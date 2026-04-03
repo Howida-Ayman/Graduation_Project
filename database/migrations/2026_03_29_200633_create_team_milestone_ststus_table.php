@@ -23,10 +23,15 @@ return new class extends Migration
 
             $table->enum('status', ['pending_submission', 'on_track', 'delayed'])
                 ->default('pending_submission');
+            $table->decimal('milestone_grade', 8, 2)->nullable();
+            $table->foreignId('graded_by_user_id')->nullable()->constrained('users')->nullOnDelete()->cascadeOnUpdate();
+            $table->timestamp('graded_at')->nullable();
 
             $table->timestamps();
 
             $table->unique(['team_id', 'milestone_id']);
+            $table->index(['graded_by_user_id']);
+            $table->index(['graded_at']);
 
         });
     }

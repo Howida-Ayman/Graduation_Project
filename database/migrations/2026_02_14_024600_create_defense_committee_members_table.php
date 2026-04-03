@@ -16,13 +16,11 @@ return new class extends Migration
             $table->foreignId('committee_id')->constrained('defense_committees')->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('member_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
             $table->enum('member_role', ['doctor','ta']);
-            $table->boolean('is_chair')->default(false);
             $table->timestamps();
 
             $table->unique(['committee_id','member_user_id']);
             $table->index(['committee_id']);
             $table->index(['member_user_id']);
-            $table->index(['is_chair']);
         });
     }
 

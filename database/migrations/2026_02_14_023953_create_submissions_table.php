@@ -25,22 +25,14 @@ return new class extends Migration
             $table->timestamp('submitted_at')->nullable();
             
 
-            $table->foreignId('graded_by_user_id')->nullable()
-                ->constrained('users')
-                ->nullOnDelete()
-                ->cascadeOnUpdate();
-
-            $table->decimal('score', 8, 2)->nullable();
             $table->text('feedback')->nullable();
-            $table->timestamp('graded_at')->nullable();
 
             $table->timestamps();
 
             $table->index(['milestone_id']);
             $table->index(['team_id']);
             $table->index(['submitted_by_user_id']);
-            $table->index(['graded_by_user_id']);
-            $table->index(['graded_at']);
+            
         });
     }
 

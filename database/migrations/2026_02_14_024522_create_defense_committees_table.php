@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->dateTime('scheduled_at')->nullable();
+            $table->dateTime('scheduled_at');
+            $table->string('hall');
             $table->foreignId('created_by_admin_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
             $table->timestamps();
 
