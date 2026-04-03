@@ -56,7 +56,7 @@ class Milestone extends Model
 
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order');
+        return $query->orderBy('phase_number');
     }
 
     /**
@@ -103,7 +103,7 @@ class Milestone extends Model
      // العلاقة مع team_milestones
     public function teamMilestonestatus()
     {
-        return $this->hasMany(TeamMilestonStstus::class);
+        return $this->hasMany(TeamMilestonStatus::class);
     }
      // علاقة مباشرة مع teams
     public function teams()

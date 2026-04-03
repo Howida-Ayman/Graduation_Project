@@ -8,8 +8,8 @@ use App\Http\Controllers\Api\Admin\ProjectRuleController;
 use App\Http\Controllers\Api\Admin\ProposalController;
 use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
+use App\Http\Controllers\Api\Admin\TeamController ;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
-use App\Http\Controllers\Api\Team\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -87,7 +87,10 @@ Route::prefix('admin')->group(function(){
     });
 
     //teams
-    Route::get('/teams/{milestone_id?}',[TeamController::class,'allTeams']);
+    Route::prefix('teams')->group(function(){
+        Route::get('/{milestone_id?}',[TeamController::class,'allTeams']);
+    });
+
     //proposal
     Route::put('/proposal/{id}/{status}',[ProposalController::class,'requestStatus']);
 });

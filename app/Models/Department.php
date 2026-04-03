@@ -19,6 +19,15 @@ public function studentProfiles()
 {
     return $this->hasMany(StudentProfile::class);
 }
+public function teams()
+{
+    return $this->hasMany(Team::class);
+}
+
+public function proposals()
+{
+    return $this->hasMany(Proposal::class);
+}
 
 
 }

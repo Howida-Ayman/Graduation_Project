@@ -20,9 +20,10 @@ class Submission extends Model
     ];
 
     protected $casts = [
-        'score' => 'decimal:2',
-        'graded_at' => 'datetime',
-    ];
+    'score' => 'decimal:2',
+    'graded_at' => 'datetime',
+    'submitted_at' => 'datetime',
+];
 
    public function milestone()
     {
@@ -43,5 +44,8 @@ class Submission extends Model
     {
         return $this->belongsTo(User::class, 'graded_by_user_id');
     }
-
+    public function files()
+    {
+    return $this->hasMany(SubmissionFile::class);
+    }
 }

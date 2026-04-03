@@ -198,43 +198,5 @@ public function leave(Request $request)
         ], 500);
     }
 }
-public function allTeams($milestone_id=null)
-{
-        $today=Carbon::now();
-        if(!$milestone_id)
-            {
-                $current_milestone=Milestone::where('start_date','<=',$today)
-                ->where('deadline','>=',$today)
-                ->first();
-                $milestone_id = $current_milestone->id;
-            }
-        $year=AcademicYear::where('is_active',1)->first();
-        $allTeams = Team::where('academic_year_id', $year->id)
-        ->with([
-            'milestones' => function ($query) use ($milestone_id) {
-                $query->where('milestones.id', $milestone_id);
-            }
-        ])
-        ->get()
-        ->map(function ($team) {
-            $milestone = $team->milestones->first();
 
-            return [
-                'team_id' => $team->id,
-                'academic_year_id' => $team->academic_year_id,
-                'department_id' => $team->department_id,
-                'leader_user_id' => $team->leader_user_id,
-                'milestone' => $milestone ? [
-                    'id' => $milestone->id,
-                    'title' => $milestone->title,
-                    'status' => $milestone->pivot->status, // status بتاعة التيم في الميلستون
-                ] : null,
-            ];
-        });
-
-    return response()->json([
-        'data' => $allTeams
-    ], 200);
-    
-}
 }
