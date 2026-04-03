@@ -34,7 +34,15 @@ class ProposalController extends Controller
 
             $team = $membership->team;
 
-            // ✅ 2. التأكد من عدد أعضاء الفريق
+            // ✅ 2. التأكد إن المستخدم هو الـ Leader
+            if ($team->leader_user_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only the team leader can submit a proposal'
+                ], 403);
+            }
+
+            // 3. التأكد من عدد أعضاء الفريق
             $activeMembersCount = TeamMembership::where('team_id', $team->id)
                 ->where('status', 'active')
                 ->count();
@@ -59,7 +67,7 @@ class ProposalController extends Controller
                 ], 400);
             }
 
-            // 3. نتأكد إن الليدر الجديد موجود في نفس الفريق
+            // 4. نتأكد إن الليدر الجديد موجود في نفس الفريق
             $isInTeam = TeamMembership::where('team_id', $team->id)
                 ->where('student_user_id', $request->leader_user_id)
                 ->where('status', 'active')
@@ -72,12 +80,12 @@ class ProposalController extends Controller
                 ], 400);
             }
 
-            // 4. تحديث leader في جدول teams
+            // 5. تحديث leader في جدول teams
             $team->update([
                 'leader_user_id' => $request->leader_user_id
             ]);
 
-            // 5. تحديث roles في team_memberships
+            // 6. تحديث roles في team_memberships
             //    - إزالة leader القديم
             TeamMembership::where('team_id', $team->id)
                 ->where('role_in_team', 'leader')
@@ -98,7 +106,7 @@ class ProposalController extends Controller
                 $imagePath = $request->file('image')->store('proposals/images', 'public');
             }
 
-            // 6. إنشاء proposal
+            // 7. إنشاء proposal
             $proposal = Proposal::updateOrCreate([
                 'team_id' => $team->id,
                 'status' => 'pending'
