@@ -132,7 +132,20 @@ public function teamMemberships()
     {
         return $this->hasMany(Request::class, 'to_user_id');
     }
+public function createdDefenseCommittees()
+{
+    return $this->hasMany(DefenseCommittee::class, 'created_by_admin_id');
+}
 
+public function defenseCommitteeMemberships()
+{
+    return $this->hasMany(DefenseCommitteeMember::class, 'member_user_id');
+}
+
+public function enteredDefenseGrades()
+{
+    return $this->hasMany(DefenseGrade::class, 'entered_by_user_id');
+}
 
 
 }

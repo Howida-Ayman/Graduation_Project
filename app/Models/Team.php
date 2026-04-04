@@ -114,6 +114,9 @@ public function teamSupervisors()
     {
         return $this->hasOne(GraduationProject::class, 'team_id');
     }
-
+    public function defenseCommittee()
+{
+    return $this->hasOne(DefenseCommittee::class, 'team_id');
+}
 
 }

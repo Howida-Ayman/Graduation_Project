@@ -27,5 +27,9 @@ class AcademicYear extends Model {
     public function milestones() {
         return $this->hasMany(Milestone::class);
     }
+    public function defenseCommittees()
+{
+    return $this->hasMany(DefenseCommittee::class, 'academic_year_id');
+}
 }
 

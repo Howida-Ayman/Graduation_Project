@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AcademicYearsController;
+use App\Http\Controllers\Api\Admin\DefenseCommitteeController;
 use App\Http\Controllers\Api\Admin\DepartmentController;
 use App\Http\Controllers\Api\Admin\DoctorController;
 use App\Http\Controllers\Api\Admin\MilestoneController;
@@ -92,9 +93,13 @@ Route::prefix('admin')->group(function(){
         Route::get('/view_team/{id}',[TeamController::class,'viewTeam']);
     });
     //final Discussion Commitee
-    Route::prefix('final_discussion')->group(function(){
-        Route::post('/',[TeamController::class,'store']);
-        Route::get('/',[TeamController::class,'index']);
+    Route::prefix('defense_committees')->group(function(){
+        Route::get('/projects', [DefenseCommitteeController::class, 'projects']);
+        Route::get('/committee-options', [DefenseCommitteeController::class, 'committeeOptions']);
+        Route::post('/', [DefenseCommitteeController::class, 'store']);
+        Route::get('/', [DefenseCommitteeController::class, 'index']);
+        Route::patch('/{id}', [DefenseCommitteeController::class, 'update']);
+        Route::delete('/{id}/delete', [DefenseCommitteeController::class, 'destroy']);
     });
 
     //proposal

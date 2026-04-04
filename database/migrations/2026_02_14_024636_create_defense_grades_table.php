@@ -13,16 +13,23 @@ return new class extends Migration
     {
         Schema::create('defense_grades', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('committee_id')->constrained('defense_committees')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->foreignId('committee_member_id')->constrained('defense_committee_members')->cascadeOnDelete()->cascadeOnUpdate();
-            $table->decimal('score', 8, 2);
-            $table->text('notes')->nullable();
-            $table->timestamp('entered_at')->nullable();
-            $table->timestamps();
+            $table->foreignId('committee_id')
+            ->constrained('defense_committees')
+            ->cascadeOnDelete()
+            ->cascadeOnUpdate();
 
-            $table->index(['committee_id']);
-            $table->index(['committee_member_id']);
-            $table->index(['entered_at']);
+           $table->foreignId('entered_by_user_id')
+           ->constrained('users')
+           ->restrictOnDelete()
+           ->cascadeOnUpdate();
+
+           $table->decimal('grade', 8, 2);
+           $table->text('notes')->nullable();
+           $table->timestamp('entered_at')->nullable();
+
+           $table->timestamps();
+
+            $table->unique('committee_id'); // درجة واحدة فقط لكل مناقشة
         });
     }
 

@@ -16,11 +16,13 @@ return new class extends Migration
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
             $table->dateTime('scheduled_at');
-            $table->string('hall');
+            $table->string('location');
             $table->foreignId('created_by_admin_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
+            $table->enum('status', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
             $table->timestamps();
 
             $table->index(['team_id']);
+            $table->unique('team_id');
             $table->index(['scheduled_at']);
             $table->index(['created_by_admin_id']);
         });
