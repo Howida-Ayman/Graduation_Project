@@ -32,10 +32,7 @@ class SubmissionSeeder extends Seeder
             'submitted_by_user_id' => $student->id,
             'notes' => 'This is our first submission for the milestone.',
             'submitted_at' => Carbon::now()->subDays(5),
-            'graded_by_user_id' => $doctor?->id,
-            'score' => 85.50,
-            'feedback' => 'Excellent work on the design system! The color palette is cohesive and visually appealing. Minor improvement needed in the font size for better readability.',
-            'graded_at' => Carbon::now()->subDays(2),
+            
         ]);
 
         // إضافة ملفات للـ submission الأول
@@ -53,10 +50,7 @@ class SubmissionSeeder extends Seeder
             'submitted_by_user_id' => $student->id,
             'notes' => 'Updated version after feedback.',
             'submitted_at' => Carbon::now()->subDays(3),
-            'graded_by_user_id' => $doctor?->id,
-            'score' => 92.00,
-            'feedback' => 'Great improvement! The backend integration is solid. Just watch out for the API response times.',
-            'graded_at' => Carbon::now()->subDays(1),
+            
         ]);
 
         SubmissionFile::create([
@@ -73,10 +67,6 @@ class SubmissionSeeder extends Seeder
             'submitted_by_user_id' => $student->id,
             'notes' => 'Final submission awaiting review.',
             'submitted_at' => Carbon::now(),
-            'graded_by_user_id' => null,
-            'score' => null,
-            'feedback' => null,
-            'graded_at' => null,
         ]);
 
         SubmissionFile::create([

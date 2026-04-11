@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Requests\Students\StudentsRequestsController;
 use App\Http\Controllers\Api\Requests\Supervisor\SupervisionRequestsController;
+use App\Http\Controllers\Api\TimeLine\TimelineController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -62,9 +63,12 @@ Route::post('/requests/{id}/respond', [StudentsRequestsController::class, 'respo
     // المشرفين
     Route::get('/available/supervisors', [SupervisionRequestsController::class, 'availableSupervisors']);
     Route::post('/supervision-requests', [SupervisionRequestsController::class, 'requestSupervision']);
-    // Route::get('/supervision-requests/received', [SupervisionRequestsController::class, 'receivedRequests']);
-    // Route::post('/supervision-requests/{id}/respond', [SupervisionRequestsController::class, 'respondRequest']);
   
+// Route::get('/my-timeline', [TimelineController::class, 'index']);
+Route::get('/my-timeline/{id}', [TimelineController::class, 'show']);
+
+// Route::get('/timeline', [TimelineController::class, 'index']);
+// Route::get('/timeline/{id}', [TimelineController::class, 'show']);
 });
 
 

@@ -13,7 +13,6 @@ class Submission extends Model
         'submitted_by_user_id',
         'notes',
         'submitted_at',
-        'feedback',
     ];
 
     protected $casts = [

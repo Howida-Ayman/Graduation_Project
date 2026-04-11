@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HomeController;
+use App\Http\Controllers\Api\TimeLine\TimelineController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,7 +15,8 @@ Route::post('login',[AuthController::class,'login'])->name('login');
 
 Route::middleware('auth:sanctum')->group(function(){
 
-Route::get('/home', [HomeController::class, 'index']);
+
+
 
 
 //logout
@@ -23,7 +25,7 @@ Route::post('logout',[AuthController::class,'logout'])->name('logout');
 });
 
 
-// routes/api.php
+
 
 
 

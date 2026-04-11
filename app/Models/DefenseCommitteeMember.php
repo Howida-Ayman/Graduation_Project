@@ -19,10 +19,12 @@ class DefenseCommitteeMember extends Model
         'seat_order' => 'integer',
     ];
 
+    
     public function committee()
     {
         return $this->belongsTo(DefenseCommittee::class, 'committee_id');
     }
+
 
     public function member()
     {

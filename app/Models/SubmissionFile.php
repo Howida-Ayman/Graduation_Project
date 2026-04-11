@@ -14,6 +14,10 @@ class SubmissionFile extends Model
         'file_url',
         'original_name',
         'uploaded_at',
+        'feedback',
+        'graded_by_user_id',
+        'graded_at',
+
     ];
 
     protected $casts = [
