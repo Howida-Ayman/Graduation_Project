@@ -8,6 +8,7 @@ use App\Models\Request;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\TeamMembership;
+use App\Models\Milestone;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 
@@ -344,25 +345,68 @@ class StudentsRequestsController extends Controller
                     ]);
                 } 
                 elseif ($req->request_type == 'team_form') {
+                    // ✅ جلب السنة الدراسية النشطة
+                    $activeAcademicYear = DB::table('academic_years')
+                        ->where('is_active', true)
+                        ->first();
+                    
+                    if (!$activeAcademicYear) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No active academic year found. Please contact admin.'
+                        ], 400);
+                    }
+                    
+                    // ✅ حساب القسم الأكثر تكراراً بين العضوين
+                    // ✅ حساب القسم الأكثر تكراراً بين العضوين (من جدول student_profiles)
+                    $fromUserDept = DB::table('student_profiles')
+                        ->where('user_id', $req->from_user_id)
+                        ->value('department_id');
+
+                    $toUserDept = DB::table('student_profiles')
+                        ->where('user_id', $req->to_user_id)
+                        ->value('department_id');
+
+                    // لو الاتنين نفس القسم، استخدمه، غير كده استخدم 1 (افتراضي)
+                    $departmentId = ($fromUserDept == $toUserDept && $fromUserDept) ? $fromUserDept : 1;
+                    // إنشاء فريق جديد
                     $team = Team::create([
-                        'academic_year_id' => 1,
-                        'department_id' => 1,
+                        'academic_year_id' => $activeAcademicYear->id,
+                        'department_id' => $departmentId,
                         'leader_user_id' => $req->from_user_id,
                     ]);
                     $req->update(['team_id' => $team->id]);
                     
+                    // ✅ إنشاء صفوف افتراضية في team_milestone_status لكل الميليستونز
+                    $milestones = Milestone::all();
+                    foreach ($milestones as $milestone) {
+                        DB::table('team_milestone_status')->updateOrInsert(
+                            [
+                                'team_id' => $team->id,
+                                'milestone_id' => $milestone->id,
+                            ],
+                            [
+                                'status' => 'pending_submission',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]
+                        );
+                    }
+                    
+                    // إضافة الـ leader
                     TeamMembership::create([
                         'team_id' => $team->id,
-                        'academic_year_id' => $team->academic_year_id,
+                        'academic_year_id' => $activeAcademicYear->id,
                         'student_user_id' => $req->from_user_id,
                         'role_in_team' => 'leader',
                         'status' => 'active',
                         'joined_at' => now(),
                     ]);
                     
+                    // إضافة العضو التاني
                     TeamMembership::create([
                         'team_id' => $team->id,
-                        'academic_year_id' => $team->academic_year_id,
+                        'academic_year_id' => $activeAcademicYear->id,
                         'student_user_id' => $req->to_user_id,
                         'role_in_team' => 'member',
                         'status' => 'active',
