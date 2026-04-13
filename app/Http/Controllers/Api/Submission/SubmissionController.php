@@ -11,74 +11,68 @@ use App\Models\TeamMilestonStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class SubmissionController extends Controller
 {
     /**
-     * جلب الميليستونز المتاحة للتسليم (مع منع التكرار)
+     * جلب الميليستونز المتاحة للتسليم
      */
-public function getActiveMilestones(Request $request)
-{
-    try {
-        $user = $request->user();
+    public function getActiveMilestones(Request $request)
+    {
+        try {
+            $user = $request->user();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            $membership = TeamMembership::where('student_user_id', $user->id)
+                ->where('status', 'active')
+                ->first();
+
+            if (!$membership) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not in any team'
+                ], 403);
+            }
+
+            $milestones = DB::select("
+                SELECT id, title, description, deadline
+                FROM milestones
+                WHERE status = 'on_progress' AND is_open = 1
+                ORDER BY phase_number ASC
+            ");
+
+            $data = [];
+            foreach ($milestones as $milestone) {
+                $data[] = [
+                    'id' => $milestone->id,
+                    'title' => $milestone->title,
+                    'description' => $milestone->description,
+                    'deadline' => $milestone->deadline,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not authenticated'
-            ], 401);
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        $membership = TeamMembership::where('student_user_id', $user->id)
-            ->where('status', 'active')
-            ->first();
-
-        if (!$membership) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not in any team'
-            ], 403);
-        }
-
-        // ✅ استخدمي phase_number بدلاً من sort_order
-        $milestones = DB::select("
-            SELECT id, title, description, deadline
-            FROM milestones
-            WHERE status = 'on_progress' AND is_open = 1
-            ORDER BY phase_number ASC
-        ");
-
-        $data = [];
-        foreach ($milestones as $milestone) {
-            $hasSubmission = DB::table('submissions')
-                ->where('milestone_id', $milestone->id)
-                ->where('team_id', $membership->team_id)
-                ->exists();
-
-            $data[] = [
-                'id' => $milestone->id,
-                'title' => $milestone->title,
-                'description' => $milestone->description,
-                'deadline' => $milestone->deadline,
-                'can_submit' => !$hasSubmission,
-                'has_submission' => $hasSubmission,
-            ];
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $data
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ], 500);
     }
-}
+
     /**
      * رفع تسليم جديد (Submission)
      */
@@ -104,7 +98,7 @@ public function getActiveMilestones(Request $request)
                 'milestone_id' => 'required|exists:milestones,id',
                 'notes' => 'nullable|string|max:1000',
                 'files' => 'required|array|min:1',
-                'files.*' => 'required|file|max:20480', // 20MB
+                'files.*' => 'required|file|max:20480',
             ]);
 
             $milestone = Milestone::where('id', $request->milestone_id)
@@ -119,23 +113,12 @@ public function getActiveMilestones(Request $request)
                 ], 400);
             }
 
-            $existing = Submission::where('milestone_id', $request->milestone_id)
-                ->where('team_id', $membership->team_id)
-                ->exists();
-
-            if ($existing) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Your team already submitted this milestone'
-                ], 400);
-            }
-
             // حساب team_status
             $now = now();
-            $deadline = $milestone->deadline;
+            $deadline = Carbon::parse($milestone->deadline);
             $teamStatus = $now <= $deadline ? 'on_track' : 'delayed';
 
-            // إنشاء الـ submission مع team_status
+            // إنشاء الـ submission
             $submission = Submission::create([
                 'milestone_id' => $request->milestone_id,
                 'team_id' => $membership->team_id,
@@ -197,8 +180,6 @@ public function getActiveMilestones(Request $request)
                     'submission_id' => $submission->id,
                     'milestone_id' => $milestone->id,
                     'team_status' => $teamStatus,
-                    'files_count' => count($uploadedFiles),
-                    'files' => $uploadedFiles,
                 ]
             ], 201);
 
