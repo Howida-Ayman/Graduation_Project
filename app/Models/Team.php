@@ -88,11 +88,11 @@ public function activeMembers()
     }
 
     // في app/Models/Team.php
-public function teamSupervisors()
-{
+    public function teamSupervisors()
+    {
     return $this->hasMany(TeamSupervisor::class);
-}
-// العلاقة مع submissions
+    }
+    // العلاقة مع submissions
     public function submissions()
     {
         return $this->hasMany(Submission::class);
@@ -115,8 +115,16 @@ public function teamSupervisors()
         return $this->hasOne(GraduationProject::class, 'team_id');
     }
     public function defenseCommittee()
-{
+    {
     return $this->hasOne(DefenseCommittee::class, 'team_id');
-}
+    }
+    public function meetings()
+    {
+    return $this->hasMany(Meeting::class);
+    }
+    public function activityLogs()
+    {
+    return $this->hasMany(ActivityLog::class);
+    }
 
 }

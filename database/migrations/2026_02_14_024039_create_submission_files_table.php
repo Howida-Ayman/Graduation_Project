@@ -18,8 +18,6 @@ return new class extends Migration
             $table->string('original_name')->nullable();
             $table->timestamp('uploaded_at')->nullable();
             $table->text('feedback')->nullable();
-            $table->foreignId('graded_by_user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamp('graded_at')->nullable();
             
             $table->timestamps();
 

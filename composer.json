@@ -29,6 +29,9 @@
         }
     },
     "autoload-dev": {
+        "files": [
+        "app/Support/activity_log.php"
+        ],
         "psr-4": {
             "Tests\\": "tests/"
         }

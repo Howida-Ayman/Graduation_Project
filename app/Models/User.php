@@ -146,6 +146,10 @@ public function enteredDefenseGrades()
 {
     return $this->hasMany(DefenseGrade::class, 'entered_by_user_id');
 }
+public function activityLogs()
+{
+    return $this->hasMany(ActivityLog::class);
+}
 
 
 }

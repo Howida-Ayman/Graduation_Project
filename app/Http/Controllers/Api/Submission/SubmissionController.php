@@ -7,6 +7,7 @@ use App\Models\Milestone;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
 use App\Models\TeamMembership;
+use App\Models\TeamMilestonStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -143,6 +144,15 @@ public function getActiveMilestones(Request $request)
                 'submitted_at' => $now,
                 'team_status' => $teamStatus,
             ]);
+            TeamMilestonStatus::updateOrCreate(
+            [
+           'team_id' => $membership->team_id,
+           'milestone_id' => $milestone->id,
+            ],
+            [
+            'status' => $teamStatus,
+            ]
+            );
 
             $uploadedFiles = [];
 
@@ -163,6 +173,20 @@ public function getActiveMilestones(Request $request)
                     'file_url' => $submissionFile->file_url,
                 ];
             }
+            $projectTitle = $membership->team?->graduationProject?->proposal?->title ?? 'Unknown Project';
+            // ✅ تسجيل Activity: رفع Submission
+            log_activity(
+           teamId: $membership->team_id,
+           userId: $user->id,
+           action: 'submission_uploaded',
+           message: "Team \"$projectTitle\" uploaded a new submission in milestone \"$milestone->title\"",
+           meta: [
+          'submission_id' => $submission->id,
+          'milestone_id' => $milestone->id,
+          'files_count' => count($uploadedFiles),
+          'team_status' => $teamStatus,
+                 ]
+                 );
 
             DB::commit();
 
@@ -187,72 +211,113 @@ public function getActiveMilestones(Request $request)
             ], 500);
         }
     }
+  public function addFeedback(Request $request, $fileId)
+{
+    $request->validate([
+        'feedback' => 'required|string|max:2000',
+    ]);
 
-//     /**
-//      * جلب الميليستونز مع حالة الفريق (on_track, pending, delayed)
-//      */
-//   public function getTeamMilestonesWithStatus(Request $request)
-// {
-//     try {
-//         $user = $request->user();
+    $user = $request->user();
 
-//         if (!$user) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'User not authenticated'
-//             ], 401);
-//         }
+    $file = SubmissionFile::findOrFail($fileId);
 
-//         $membership = TeamMembership::where('student_user_id', $user->id)
-//             ->where('status', 'active')
-//             ->first();
+    $team = $file->submission->team;
 
-//         if (!$membership) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'You are not in any team'
-//             ], 403);
-//         }
+    $isSupervisor = $team->supervisors()
+        ->where('users.id', $user->id)
+        ->exists();
 
-//         // ✅ استخدمي phase_number بدلاً من sort_order
-//         $milestones = DB::select("
-//             SELECT id, title, description, deadline
-//             FROM milestones
-//             WHERE status = 'on_progress'
-//             ORDER BY phase_number ASC
-//         ");
+    if (! $isSupervisor) {
+        return response()->json([
+            'message' => 'Unauthorized. You are not supervising this team.'
+        ], 403);
+    }
 
-//         $data = [];
-//         foreach ($milestones as $milestone) {
-//             $submission = DB::table('submissions')
-//                 ->where('milestone_id', $milestone->id)
-//                 ->where('team_id', $membership->team_id)
-//                 ->first();
+    $file->update([
+        'feedback' => $request->feedback,
+    ]);
 
-//             $data[] = [
-//                 'id' => $milestone->id,
-//                 'title' => $milestone->title,
-//                 'description' => $milestone->description,
-//                 'deadline' => $milestone->deadline,
-//                 'team_status' => $submission ? $submission->team_status : 'pending',
-//                 'submitted_at' => $submission->submitted_at ?? null,
-//                 'can_submit' => is_null($submission),
-//                 'has_submission' => !is_null($submission),
-//             ];
-//         }
+    $projectTitle = $team?->graduationProject?->proposal?->title ?? 'Unknown Project';
 
-//         return response()->json([
-//             'success' => true,
-//             'data' => $data
-//         ]);
+    log_activity(
+        teamId: $team->id,
+        userId: $user->id,
+        action: 'feedback_added',
+        message: 'feedback was added on project "' . $projectTitle . '"',
+        meta: [
+            'submission_id' => $file->submission_id,
+            'submission_file_id' => $file->id,
+        ]
+    );
 
-//     } catch (\Exception $e) {
-//         return response()->json([
-//             'success' => false,
-//             'error' => $e->getMessage(),
-//             'file' => $e->getFile(),
-//             'line' => $e->getLine()
-//         ], 500);
-//     }
-// }
+    return response()->json([
+    'message' => 'Feedback added successfully',
+    'data' => [
+        'id' => $file->id,
+        'file_name' => $file->original_name,
+        'feedback' => $file->feedback,
+        'uploaded_at' => $file->uploaded_at->format('Y m d'),
+    ]
+]);
+}
+public function addGrade(Request $request, $teamId, $milestoneId)
+{
+    $request->validate([
+        'grade' => 'required|decimal:2',
+    ]);
+
+    $user = $request->user();
+
+    // نجيب الحالة
+    $status = TeamMilestonStatus::with('team.graduationProject.proposal', 'milestone')
+        ->where('team_id', $teamId)
+        ->where('milestone_id', $milestoneId)
+        ->firstOrFail();
+
+    //  Authorization: لازم يكون مشرف
+    $isSupervisor = $status->team
+        ->supervisors()
+        ->where('users.id', $user->id)
+        ->exists();
+
+    if (! $isSupervisor) {
+        return response()->json([
+            'message' => 'Unauthorized. You are not supervising this team.'
+        ], 403);
+    }
+
+    //Update grade
+    $status->update([
+        'milestone_grade' => $request->grade,
+        'graded_by_user_id' => $user->id,
+        'graded_at' => now(),
+    ]);
+
+    
+    $projectTitle = $status->team?->graduationProject?->proposal?->title ?? 'Unknown Project';
+
+    // Activity Log
+    log_activity(
+        teamId: $teamId,
+        userId: $user->id,
+        action: 'grade_added',
+        message: 'Team "' . $projectTitle . '" was graded with ' . $request->grade,
+        meta: [
+            'milestone_id' => $milestoneId,
+            'grade' => $request->grade,
+        ]
+    );
+
+    return response()->json([
+        'message' => 'Grade added successfully',
+        'data' => [
+            'grade' => $status->milestone_grade,
+            'milestone' => [
+                'id' => $status->milestone->id,
+                'title' => $status->milestone->title,
+            ],
+            'project_title' => $projectTitle,
+        ]
+    ]);
+}
 }

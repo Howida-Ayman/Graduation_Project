@@ -15,8 +15,6 @@ class SubmissionFile extends Model
         'original_name',
         'uploaded_at',
         'feedback',
-        'graded_by_user_id',
-        'graded_at',
 
     ];
 
