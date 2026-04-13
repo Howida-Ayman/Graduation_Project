@@ -10,6 +10,7 @@ class TeamMembership extends Model
         'team_id',
         'student_user_id',
         'role_in_team', // leader/member
+        'status',
         'academic_year_id',
         'joined_at',
         'left_at',

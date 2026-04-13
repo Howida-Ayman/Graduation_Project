@@ -31,10 +31,7 @@ class Milestone extends Model
     /**
      * العلاقات
      */
-    public function academicYear(): BelongsTo
-    {
-        return $this->belongsTo(AcademicYear::class);
-    }
+    
 
     public function requirements(): HasMany
     {
@@ -49,10 +46,6 @@ class Milestone extends Model
         return $query->where('is_open', true);
     }
 
-    public function scopeForAcademicYear($query, $academicYearId)
-    {
-        return $query->where('academic_year_id', $academicYearId);
-    }
 
     public function scopeOrdered($query)
     {

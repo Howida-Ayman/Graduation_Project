@@ -23,10 +23,6 @@ class MilestoneRequirement extends Model
         return $this->belongsTo(Milestone::class);
     }
 
-    public function submissions(): HasMany
-    {
-        return $this->hasMany(Submission::class, 'milestone_requirement_id');
-    }
 
     /**
      * التحقق من وجود تسليم لفريق معين

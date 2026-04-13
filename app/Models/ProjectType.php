@@ -27,8 +27,5 @@ class ProjectType extends Model
         return $this->hasMany(Proposal::class);
     }
 
-    public function previousProjects()
-    {
-        return $this->hasMany(PreviousProject::class);
-    }
+   
 }

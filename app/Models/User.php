@@ -79,10 +79,9 @@ public function submissions()
     return $this->hasMany(Submission::class, 'submitted_by_user_id');
 }
 
-// التسليمات اللي المستخدم صححها
-public function gradedSubmissions()
+public function gradedMilestones()
 {
-    return $this->hasMany(Submission::class, 'graded_by_user_id');
+    return $this->hasMany(TeamMilestonStatus::class, 'graded_by_user_id');
 }
 
 public function teamMemberships()
@@ -150,6 +149,13 @@ public function activityLogs()
 {
     return $this->hasMany(ActivityLog::class);
 }
-
+public function sentAnnouncements()
+{
+    return $this->hasMany(Announcement::class, 'sent_by_user_id');
+}
+public function enrollments()
+{
+    return $this->hasMany(StudentEnrollment::class, 'student_user_id');
+}
 
 }

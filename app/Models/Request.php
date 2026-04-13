@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Request extends Model
 {
     protected $fillable = [
+        'academic_year_id',
         'from_user_id',
         'to_user_id',
         'team_id',
@@ -19,6 +20,10 @@ class Request extends Model
         'status' => 'string',
         'request_type' => 'string',
     ];
+    public function academicYear(): BelongsTo
+{
+    return $this->belongsTo(AcademicYear::class);
+}
 
     public function fromUser(): BelongsTo
     {

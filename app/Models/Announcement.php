@@ -4,21 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ActivityLog extends Model
+class Announcement extends Model
 {
 protected $fillable = [
     'academic_year_id',
     'team_id',
-    'user_id',
-    'action',
+    'sent_by_user_id',
     'message',
-    'meta',
 ];
-
-    protected $casts = [
-        'meta' => 'array',
-    ];
-    public function academicYear()
+public function academicYear()
 {
     return $this->belongsTo(AcademicYear::class);
 }
@@ -28,8 +22,8 @@ protected $fillable = [
         return $this->belongsTo(Team::class);
     }
 
-    public function user()
+    public function sender()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'sent_by_user_id');
     }
 }

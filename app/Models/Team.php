@@ -126,5 +126,9 @@ public function activeMembers()
     {
     return $this->hasMany(ActivityLog::class);
     }
+    public function announcements()
+    {  
+    return $this->hasMany(Announcement::class);
+    }
 
 }

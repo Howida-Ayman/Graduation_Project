@@ -6,12 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class PreviousProject extends Model
 {
-    protected $fillable = [
-        'team_id',
-        'proposal_id',
-        'final_score',
-        'archived_at',
-    ];
+   protected $fillable = [
+    'academic_year_id',
+    'team_id',
+    'proposal_id',
+    'final_score',
+    'feedback',
+    'graded_by',
+    'graded_at',
+    'archived_at',
+];
 
     
 
@@ -19,6 +23,10 @@ class PreviousProject extends Model
     {
         return $this->belongsTo(Team::class);
     }
+    public function academicYear()
+{
+    return $this->belongsTo(AcademicYear::class);
+}
 
     public function proposal()
     {

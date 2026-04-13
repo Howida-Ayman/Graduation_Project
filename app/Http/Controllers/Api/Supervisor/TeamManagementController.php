@@ -8,6 +8,7 @@ use App\Models\Milestone;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use App\Services\TeamDetailsService;
 
 class TeamManagementController extends Controller
 {
@@ -33,13 +34,7 @@ class TeamManagementController extends Controller
             ->orderBy('phase_number')
             ->first();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Base query: كل التيمات اللي اليوزر الحالي مشرف عليها
-        | دي للإحصائيات + الwidgets + الفلاتر
-        | ومش بتتأثر بالسيرش أو الفلاتر
-        |--------------------------------------------------------------------------
-        */
+       
         $baseTeamsQuery = Team::query()
             ->whereHas('supervisors', function ($q) use ($user) {
                 $q->where('users.id', $user->id);
@@ -440,5 +435,38 @@ class TeamManagementController extends Controller
                 'recent_activity' => $recentActivity,
             ]
         ]);
+    }
+
+     public function viewTeam(Request $request, $teamId, TeamDetailsService $teamDetailsService)
+    {
+        $user = $request->user();
+
+        $team = Team::with([
+            'department',
+            'members.user',
+            'graduationProject.proposal',
+            'currentSupervisors',
+            'teamMilestonestatus',
+            'teamMilestonestatus.milestone',
+            'submissions.files',
+            'submissions.milestone',
+            'submissions.submitter',
+        ])
+        ->where('id', $teamId)
+        ->whereHas('currentSupervisors', function ($q) use ($user) {
+            $q->where('users.id', $user->id);
+        })
+        ->first();
+
+        if (! $team) {
+            return response()->json([
+                'message' => 'Team not found or you are not authorized to view it'
+            ], 404);
+        }
+
+        return response()->json(
+            $teamDetailsService->buildResponse($team),
+            200
+        );
     }
 }

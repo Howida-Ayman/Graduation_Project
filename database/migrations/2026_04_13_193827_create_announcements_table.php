@@ -11,33 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('activity_logs', function (Blueprint $table) {
+        Schema::create('announcements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('academic_year_id')->constrained();
             $table->foreignId('team_id')
-                ->nullable()
                 ->constrained('teams')
-                ->nullOnDelete()
+                ->cascadeOnDelete()
                 ->cascadeOnUpdate();
 
-            $table->foreignId('user_id')
-                ->nullable()
+            $table->foreignId('sent_by_user_id')
                 ->constrained('users')
-                ->nullOnDelete()
+                ->restrictOnDelete()
                 ->cascadeOnUpdate();
 
-            $table->string('action', 100);
-            $table->text('message')->nullable();
-
-            $table->json('meta')->nullable();
+            $table->text('message');
 
             $table->timestamps();
 
             $table->index(['team_id']);
-            $table->index(['user_id']);
-            $table->index(['action']);
+            $table->index(['sent_by_user_id']);
             $table->index(['created_at']);
-        
         });
     }
 
@@ -46,6 +39,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('activity_logs');
+        Schema::dropIfExists('announcements');
     }
 };

@@ -36,9 +36,9 @@ class TeamMilestonStatus extends Model
     {
     return $this->belongsTo(User::class, 'graded_by_user_id');
     }
-    public function submissions()
-    {
+   public function submissions()
+{
     return $this->hasMany(Submission::class, 'milestone_id', 'milestone_id')
-        ->whereColumn('team_id', 'team_milestone_status.team_id');
-    }
+        ->where('team_id', $this->team_id);
+}
 }

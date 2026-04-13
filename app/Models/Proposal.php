@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Proposal extends Model
 {
     protected $fillable = [
+        'academic_year_id',
         'team_id',
         'submitted_by_user_id',
         'department_id',
@@ -34,6 +35,10 @@ class Proposal extends Model
     public function team()
     {
         return $this->belongsTo(Team::class);
+    }
+    public function academicYear()
+    {
+    return $this->belongsTo(AcademicYear::class);
     }
 
     public function submitter()

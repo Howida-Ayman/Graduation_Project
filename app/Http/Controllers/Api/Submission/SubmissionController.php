@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Milestone;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
+use App\Models\Team;
 use App\Models\TeamMembership;
 use App\Models\TeamMilestonStatus;
 use Illuminate\Http\Request;
@@ -300,5 +301,49 @@ public function addGrade(Request $request, $teamId, $milestoneId)
             'project_title' => $projectTitle,
         ]
     ]);
+}
+public function deleteGrade(Request $request)
+{
+    $user = $request->user();
+
+    $validated = $request->validate([
+        'team_id' => 'required|exists:teams,id',
+        'milestone_id' => 'required|exists:milestones,id',
+    ]);
+
+    //  تأكد إن الدكتور مشرف على التيم
+    $isAuthorized =Team::where('id', $validated['team_id'])
+        ->whereHas('currentSupervisors', function ($q) use ($user) {
+            $q->where('users.id', $user->id)
+              ->where('team_supervisors.supervisor_role', 'doctor');
+        })
+        ->exists();
+
+    if (! $isAuthorized) {
+        return response()->json([
+            'message' => 'Unauthorized'
+        ], 403);
+    }
+
+    $row =TeamMilestonStatus::where('team_id', $validated['team_id'])
+        ->where('milestone_id', $validated['milestone_id'])
+        ->first();
+
+    if (! $row) {
+        return response()->json([
+            'message' => 'Milestone record not found'
+        ], 404);
+    }
+
+    // مسح الدرجة فقط
+    $row->update([
+        'milestone_grade' => null,
+        'graded_by' => null,
+        'graded_at' => null,
+    ]);
+
+    return response()->json([
+        'message' => 'Grade deleted successfully'
+    ], 200);
 }
 }
