@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Milestone extends Model
 {
     protected $table = 'milestones';
-
     protected $fillable = [
         'title',
         'description',
@@ -18,15 +18,21 @@ class Milestone extends Model
         'deadline',
         'status',
         'is_open',
-        'notes'
+        'is_forced_open',
+        'is_forced_closed',
+        'is_active',
+        'notes',
     ];
-
     protected $casts = [
         'start_date' => 'date:Y-m-d',
         'deadline' => 'date:Y-m-d',
         'is_open' => 'boolean',
         'status' => 'string',
+        'is_forced_open' => 'boolean',
+        'is_forced_closed' => 'boolean',
     ];
+
+
 
     /**
      * العلاقات

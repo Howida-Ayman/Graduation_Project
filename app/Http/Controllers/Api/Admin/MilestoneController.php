@@ -13,81 +13,62 @@ use function PHPUnit\Framework\countOf;
 
 class MilestoneController extends Controller
 {
-    public function index()
-    {
-    $today = Carbon::today(); // 2026-03-17 00:00:00
-    
-    // نجيب الكل
-    $milestones = Milestone::with('requirements')->get();
-    
-    foreach ($milestones as $milestone) {
-        $startDate = Carbon::parse($milestone->start_date);
-        $deadline = Carbon::parse($milestone->deadline);
+public function index()
+{
+    $milestones = Milestone::with('requirements')
+        ->where('is_active', true)
+        ->orderBy('phase_number')
+        ->get();
 
-        $newStatus = null;
-        $is_open = false;
-        
-        if ($startDate <= $today && $deadline >= $today) {
-            $newStatus = 'on_progress';
-            $is_open=true;
-        } elseif ($deadline < $today) {
-            $newStatus = 'completed';
-            $is_open=false;
-        } elseif ($startDate > $today) {
-            $newStatus = 'pending';
-            $is_open=false;
-        }
-        // لو الحالة اتغيرت، حدث
-        if ($newStatus && $milestone->status != $newStatus) {
-            $milestone->update(['status' => $newStatus,'is_open'=>$is_open]);
-        }
-    }
-            $updatedmilestones=Milestone::with('requirements')->orderBy('phase_number')->get();
-        return response()->json([
-                'message' => 'Milestones retrieved successfully',
-                'count'=>count($milestones),
-                'data' => $updatedmilestones->load('requirements')
-            ], 200);
+    return response()->json([
+        'message' => 'Milestones retrieved successfully',
+        'count' => $milestones->count(),
+        'data' => $milestones
+    ], 200);
+}
+   public function store(MilestonesRequest $request)
+{
+    try {
+        $milestone = DB::transaction(function () use ($request) {
+            $phase_number = $this->calculateSortOrder($request->previous_milestone_id);
+            $this->shiftMilestones($phase_number, 'increment');
 
-    }
-    public function store(MilestonesRequest $request)
-    {
-        try {
-            
-            $milestone=DB::transaction(function() use($request)
-            {
-               $phase_number=$this->calculateSortOrder($request->previous_milestone_id);
-               $this->shiftMilestones($phase_number,'increment');
-               $milestone=Milestone::create([
-                'title'=>$request->title,
-                'description'=>$request->description?$request->description:null,
-                'phase_number' => $phase_number, 
+            $milestone = Milestone::create([
+                'title' => $request->title,
+                'description' => $request->description ? $request->description : null,
+                'phase_number' => $phase_number,
                 'start_date' => $request->start_date,
                 'deadline' => $request->deadline,
                 'status' => 'pending',
-                'is_open' => true
-               ]);
-               // 4. إضافة المتطلبات
-                if ($request->has('requirements')) {
-                    foreach ($request->requirements as $requirement) {
-                        $milestone->requirements()->create([
-                            'requirement' => $requirement
-                        ]);
-                    }
+                'is_open' => false,
+                'is_active' => true,
+                'is_forced_open' => false,
+                'is_forced_closed' => false,
+            ]);
+
+            if ($request->has('requirements')) {
+                foreach ($request->requirements as $requirement) {
+                    $milestone->requirements()->create([
+                        'requirement' => $requirement
+                    ]);
                 }
+            }
+
             return $milestone;
-            });
-            return response()->json([
-                'message' => 'Milestone created successfully',
-                'data' => $milestone->load('requirements')
-            ], 201);
-        } catch (\Throwable $th) {
-               return response()->json([
-                'message' => 'Failed to create milestone',
-                'error' => $th->getMessage()
-            ], 500);
-        }
-        }
+        });
+
+        return response()->json([
+            'message' => 'Milestone created successfully',
+            'data' => $milestone->load('requirements')
+        ], 201);
+
+    } catch (\Throwable $th) {
+        return response()->json([
+            'message' => 'Failed to create milestone',
+            'error' => $th->getMessage()
+        ], 500);
+    }
+}
     
     private function calculateSortOrder($previousMilestoneId)
     {
@@ -116,49 +97,55 @@ class MilestoneController extends Controller
             $milestone->save();
         }
     }
-   public function reopen($id)
+  public function toggleOpenClose($id)
 {
     try {
         $milestone = Milestone::findOrFail($id);
-        
-        // لو milestone مقفول ومكتمل -> نفتحه تاني
-        if ($milestone->is_open == false && $milestone->status == 'completed') {
+
+        // pending: ممنوع
+        if ($milestone->status === 'pending') {
+            return response()->json([
+                'message' => 'Pending milestone cannot be changed'
+            ], 400);
+        }
+
+        // completed -> reopen
+        if ($milestone->status === 'completed') {
             $milestone->update([
+                'is_forced_open' => true,
+                'is_forced_closed' => false,
                 'status' => 'on_progress',
                 'is_open' => true,
             ]);
-            
+
             return response()->json([
                 'message' => 'Milestone reopened successfully',
-                'data' => $milestone
+                'data' => $milestone->fresh()->load('requirements')
             ], 200);
         }
-        
-        // لو milestone مفتوح وفي progress -> نقفله
-        if ($milestone->is_open == true && $milestone->status == 'on_progress') {
+
+        // on_progress -> close
+        if ($milestone->status === 'on_progress') {
             $milestone->update([
+                'is_forced_open' => false,
+                'is_forced_closed' => true,
                 'status' => 'completed',
                 'is_open' => false,
             ]);
-            
+
             return response()->json([
-                'message' => 'Milestone completed successfully',
-                'data' => $milestone
+                'message' => 'Milestone closed successfully',
+                'data' => $milestone->fresh()->load('requirements')
             ], 200);
         }
-        
-        // لو مش eligible للتغيير
+
         return response()->json([
-            'message' => 'Milestone cannot be changed in its current state',
-            'current_state' => [
-                'status' => $milestone->status,
-                'is_open' => $milestone->is_open
-            ]
+            'message' => 'Milestone cannot be changed in its current state'
         ], 400);
-        
+
     } catch (\Throwable $th) {
         return response()->json([
-            'message' => 'Milestone Not Found',
+            'message' => 'Milestone not found'
         ], 404);
     }
 }
@@ -166,23 +153,30 @@ public function milestonesByStatus($status)
 {
     try {
         $allowedStatuses = ['pending', 'on_progress', 'completed'];
-        
+
         if ($status && !in_array($status, $allowedStatuses)) {
             return response()->json([
                 'message' => 'Invalid status',
                 'allowed_statuses' => $allowedStatuses
             ], 400);
         }
-        $milestones=Milestone::with('requirements')->orderBy('phase_number')->where('status',$status)->get();
-            return response()->json([
-                'message' => "$status Milestones retrieved successfully",
-                'count'=>count($milestones),
-                'data' => $milestones->load('requirements')
-            ], 200);
+
+        $milestones = Milestone::with('requirements')
+            ->where('is_active', true)
+            ->where('status', $status)
+            ->orderBy('phase_number')
+            ->get();
+
+        return response()->json([
+            'message' => "$status Milestones retrieved successfully",
+            'count' => $milestones->count(),
+            'data' => $milestones
+        ], 200);
+
     } catch (\Throwable $th) {
         return response()->json([
-                'message' => 'Failed to retrieve milestones.',
-            ], 500);
+            'message' => 'Failed to retrieve milestones.',
+        ], 500);
     }
 }
 public function update(Request $request,$id)
@@ -218,11 +212,13 @@ public function update(Request $request,$id)
     }
 }
             $milestone->update([
-                'title'=>$request->filled('title')?$request->title:$milestone->title,
-                'description'=>$request->filled('description')?$request->description:$milestone->description,
-                'start_date'=>$finalStartDate,
-                'deadline'=>$finalDeadline,
-            ]);
+            'title' => $request->filled('title') ? $request->title : $milestone->title,
+            'description' => $request->filled('description') ? $request->description : $milestone->description,
+            'start_date' => $finalStartDate,
+            'deadline' => $finalDeadline,
+            'is_forced_open' => false,
+            'is_forced_closed' => false,
+]);
             // 3. لو في previous_milestone_id (إعادة ترتيب)
             if ($request->has('previous_milestone_id')) {
                 $this->reorderMilestoneOnUpdate($milestone, $request->previous_milestone_id);
@@ -342,12 +338,27 @@ private function reorderMilestoneOnUpdate($milestone, $previousMilestoneId)
         'phase_number' => $newPhaseNumber
     ]);
 }
-public function destroy($id)
+public function toggleActive($id)
 {
-    $milestone=Milestone::findOrFail($id)->delete();
-    return response()->json([
-        'message' => 'Milestones Deleted successfully'
-            ], 200);
+    try {
+        $milestone = Milestone::findOrFail($id);
+
+        $milestone->update([
+            'is_active' => !$milestone->is_active
+        ]);
+
+        return response()->json([
+            'message' => $milestone->is_active
+                ? 'Milestone activated successfully'
+                : 'Milestone deactivated successfully',
+            'data' => $milestone->load('requirements')
+        ], 200);
+
+    } catch (\Throwable $th) {
+        return response()->json([
+            'message' => 'Milestone not found'
+        ], 404);
+    }
 }
 public function storeNote(Request $request, $milestone_id)
 {
@@ -386,8 +397,5 @@ public function storeNote(Request $request, $milestone_id)
     }
 }
 
-public function deleteNote(Request $request,$id)
-{
-    
-}
+
 }

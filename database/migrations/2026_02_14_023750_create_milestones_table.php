@@ -20,6 +20,8 @@ return new class extends Migration
             $table->dateTime('deadline');
             $table->enum('status',['completed','on_progress','pending']);
             $table->boolean('is_open')->default(false);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_forced_open')->default(false);
             $table->text('notes')->nullable();
             $table->timestamps();
 

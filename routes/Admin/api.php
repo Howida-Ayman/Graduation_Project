@@ -27,7 +27,7 @@ Route::prefix('admin')->group(function(){
     Route::post('/import',[DoctorController::class,'import'])->name('doctor.import');
     Route::get('/export',[DoctorController::class,'export'])->name('doctor.export');
     Route::post('/store',[DoctorController::class,'store'])->name(name: 'doctor.store'); 
-    Route::delete('/delete',[DoctorController::class,'destroy']);
+    Route::post('/deactivate-all',[DoctorController::class,'deactivateAllDoctors']);
     });
 
     //import & export TA
@@ -81,9 +81,9 @@ Route::prefix('admin')->group(function(){
     //milestones 
     Route::prefix('milestones')->group(function(){
         Route::post('/',[MilestoneController::class,'store']);
-        Route::post('/{id}/reopen',[MilestoneController::class,'reopen']);
+        Route::post('/{id}/toggle-Open-Close',[MilestoneController::class,'toggleOpenClose']);
         Route::put('/{id}/update',[MilestoneController::class,'update']);
-        Route::delete('/{id}/delete',[MilestoneController::class,'destroy']);
+        Route::post('/{id}/toggle-active',[MilestoneController::class,'toggleActive']);
         Route::put('/{id}/add/notes',[MilestoneController::class,'storeNote']);
     });
 

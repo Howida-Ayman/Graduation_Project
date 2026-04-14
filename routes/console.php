@@ -9,6 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 
+Schedule::command('milestones:sync-statuses')->everyMinute();
 
 // Schedule::command('team-milestone:update')->everyMinute();
 Schedule::command('team-milestone:update')->dailyAt('00:00');
