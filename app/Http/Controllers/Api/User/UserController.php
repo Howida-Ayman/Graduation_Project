@@ -12,62 +12,72 @@ use Illuminate\Support\Facades\DB ;
 
 class UserController extends Controller
 {
-    public function profile(Request $request)
+   public function profile(Request $request)
 {
-    $user = $request->user()->load(
+    $user = $request->user()->load([
+        'role',
         'studentProfile.department',
-    );
+        'staffprofile.department',
+    ]);
 
     return response()->json([
         'status' => true,
         'data' => new ProfileResource($user)
-    ]);
+    ], 200);
 }
 
-public function update(UpdateProfileRequest $request)
-{
-    $user = $request->user();
+    public function update(UpdateProfileRequest $request)
+    {
+        $user = $request->user();
 
-    DB::beginTransaction();
+        DB::beginTransaction();
 
-    try {
+        try {
+            // تحديث جدول users
+            $user->update([
+                'full_name' => $request->full_name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'track_name' => $request->track_name,
+            ]);
 
-        // تحديث جدول users
-        $user->update([
-            'full_name' => $request->full_name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'track_name' => $request->track_name,
-        ]);
+            // لو Student
+            if ($user->role?->code === 'student') {
+                $user->studentProfile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'department_id' => $request->department_id,
+                        'gpa' => $request->gpa,
+                    ]
+                );
+            }
 
-    
-        // تحديث أو إنشاء student_profile
-        $user->studentProfile()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'department_id' => $request->department_id,
-                'gpa' => $request->gpa,
-            ]
-        );
+            // لو Doctor أو TA
+            if (in_array($user->role?->code, ['doctor', 'TA', 'ta'])) {
+                $user->staffprofile()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'department_id' => $request->department_id,
+                    ]
+                );
+            }
 
-        DB::commit();
+            DB::commit();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Profile updated successfully'
-        ]);
+            return response()->json([
+                'status' => true,
+                'message' => 'Profile updated successfully'
+            ], 200);
 
-    } catch (\Exception $e) {
+        } catch (\Exception $e) {
+            DB::rollBack();
 
-        DB::rollBack();
-
-        return response()->json([
-            'status' => false,
-            'message' => 'Something went wrong'
-        ], 500);
+            return response()->json([
+                'status' => false,
+                'message' => 'Something went wrong'
+            ], 500);
+        }
     }
-    
-}
 public function toggleUserStatus($id)
 {
     $user = User::findOrFail($id);

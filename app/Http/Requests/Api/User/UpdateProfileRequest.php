@@ -3,31 +3,62 @@
 namespace App\Http\Requests\Api\User;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        return auth()->check();
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
-        return [
+        $user = $this->user();
+        $roleCode = $user?->role?->code;
+
+        $rules = [
             'full_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'track_name' => 'nullable|string|max:255',
-            'gpa' => 'nullable|numeric|min:0|max:4',
-            'department_id' => 'required|exists:departments,id',
-            'email' => 'required|email|max:255|unique:users,email,' . $this->user()->id,
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user?->id),
+            ],
+            'department_id' => [
+                'required',
+                Rule::exists('departments', 'id')->where(function ($query) {
+                    $query->where('is_active', 1);
+                }),
+            ],
+        ];
+
+        // الطالب فقط
+        if ($roleCode === 'student') {
+            $rules['gpa'] = 'nullable|numeric|min:0|max:4';
+        } else {
+            // للدكتور / المعيد ما نحتاجش GPA
+            $rules['gpa'] = 'nullable';
+        }
+
+        return $rules;
+    }
+
+    public function messages(): array
+    {
+        return [
+            'full_name.required' => 'Full name is required',
+            'phone.required' => 'Phone is required',
+            'email.required' => 'Email is required',
+            'email.email' => 'Please enter a valid email address',
+            'email.unique' => 'This email is already taken',
+            'department_id.required' => 'Department is required',
+            'department_id.exists' => 'Selected department is invalid or inactive',
+            'gpa.numeric' => 'GPA must be a number',
+            'gpa.min' => 'GPA must be at least 0',
+            'gpa.max' => 'GPA must not exceed 4',
         ];
     }
 }

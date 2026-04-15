@@ -7,32 +7,27 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class SuggestedProjectDetailResource extends JsonResource
 {
-    public function toArray($request)
+    public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
-            
-            // Basic Info
+
             'title' => $this->title,
             'description' => $this->description,
             'image_url' => $this->image_url,
-            
-            // Problem Statement (لو موجود)
-            //'problem_statement' => $this->problem_statement,
-            
-            // Department
-            'department' => $this->department?->name,
-            
-            // Technologies
-            'technologies' => $this->recommended_tools 
-                ? array_map('trim', explode(',', $this->recommended_tools))
+
+            'department_id' => $this->department?->id,
+            'department_name' => $this->department?->name,
+
+            'technologies' => $this->recommended_tools
+                ? collect(explode(',', $this->recommended_tools))
+                    ->map(fn($item) => trim($item))
+                    ->filter()
+                    ->values()
                 : [],
-            
-       
-            
-            // Timestamps
+
             'created_at' => $this->created_at?->format('Y-m-d'),
-            'updated_at'=> $this->updated_at?->format('Y-m-d'),
+            'updated_at' => $this->updated_at?->format('Y-m-d'),
         ];
     }
 }

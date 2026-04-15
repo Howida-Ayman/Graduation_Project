@@ -47,6 +47,16 @@ class Milestone extends Model
     /**
      * النطاقات (Scopes)
      */
+    public function scopeAvailableForSubmission($query)
+{
+    return $query
+        ->where('is_active', true)
+        ->where('is_forced_closed', false)
+        ->where(function ($q) {
+            $q->where('is_forced_open', true)
+              ->orWhere('is_open', true);
+        });
+}
     public function scopeOpen($query)
     {
         return $query->where('is_open', true);

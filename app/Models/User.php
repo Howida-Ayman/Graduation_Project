@@ -157,5 +157,25 @@ public function enrollments()
 {
     return $this->hasMany(StudentEnrollment::class, 'student_user_id');
 }
+public function favoriteSuggestedProjects()
+{
+    return $this->belongsToMany(
+        SuggestedProject::class,
+        'suggested_project_favorites',
+        'student_user_id',
+        'suggested_project_id'
+    );
+}
+
+public function favoritePreviousProjects()
+{
+    return $this->belongsToMany(
+        PreviousProject::class,
+        'previous_project_favorites',
+        'student_user_id',
+        'previous_project_id'
+    );
+}
 
 }
+

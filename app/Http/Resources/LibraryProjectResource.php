@@ -4,54 +4,59 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Models\SuggestedProject;
+use App\Models\PreviousProject;
 
 class LibraryProjectResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
-   
-        public function toArray($request)
+    public function toArray(Request $request): array
     {
-        // لو Suggested
-        if ($this->resource instanceof \App\Models\SuggestedProject) {
-
+        if ($this->resource instanceof SuggestedProject) {
             return [
                 'id' => $this->id,
                 'type' => 'suggested',
                 'title' => $this->title,
                 'description' => $this->description,
-                'department' => $this->department?->name,
-                'technologies' => $this->recommended_tools 
-                ? array_map('trim', explode(',', $this->recommended_tools))
-                : [],  // تحويل النص إلى array
+
+                'department_id' => $this->department?->id,
+                'department_name' => $this->department?->name,
+
+                'year' => null,
+
+                'technologies' => $this->recommended_tools
+                    ? collect(explode(',', $this->recommended_tools))
+                        ->map(fn($item) => trim($item))
+                        ->filter()
+                        ->values()
+                    : [],
+
                 'favorites' => $this->favorites_count ?? 0,
-                // 'views' => $this->views_count,
             ];
         }
 
-        // لو Previous
-        if ($this->resource instanceof \App\Models\PreviousProject) {
-
+        if ($this->resource instanceof PreviousProject) {
             return [
                 'id' => $this->id,
                 'type' => 'previous',
                 'title' => $this->proposal?->title,
                 'description' => $this->proposal?->description,
+
+                'department_id' => $this->proposal?->department?->id,
+                'department_name' => $this->proposal?->department?->name,
+
                 'year' => $this->proposal?->team?->academicYear?->code,
-                'department' => $this->proposal?->department?->name,
+
                 'technologies' => $this->proposal?->technologies
-                ? array_map('trim', explode(',', $this->proposal->technologies))
-                : [],  // تحويل النص إلى array
+                    ? collect(explode(',', $this->proposal->technologies))
+                        ->map(fn($item) => trim($item))
+                        ->filter()
+                        ->values()
+                    : [],
+
                 'favorites' => $this->favorites_count ?? 0,
-                // 'views' => $this->proposal?->views_count,
-                
             ];
         }
 
         return [];
     }
-    }
-
+}

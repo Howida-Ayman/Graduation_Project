@@ -130,5 +130,10 @@ public function activeMembers()
     {  
     return $this->hasMany(Announcement::class);
     }
+    public function scopeactiveYear($query)
+{
+    $activeYear = AcademicYear::where('is_active', true)->first();
+    return $query->where('academic_year_id', $activeYear->id);
+}
 
 }

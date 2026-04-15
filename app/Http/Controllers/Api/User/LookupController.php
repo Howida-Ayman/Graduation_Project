@@ -21,19 +21,11 @@ class LookupController extends Controller
         'data' => $departments
     ]);
 }
-// public function academicYears()
-// {
-//     $years = AcademicYear::select('id', 'code')
-//         ->get();
-
-//     return response()->json([
-//         'status' => true,
-//         'data' => $years
-//     ]);
-// }
 public function getprojectTypes()
 {
-    $types=ProjectType::select('id','name','description')->get();
+    $types = ProjectType::where('is_active', 1)
+            ->select('id', 'name', 'description')
+            ->get();
     return response()->json([
         'message'=>'project types retrieved successfully',
         'data'=>$types

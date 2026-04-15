@@ -8,17 +8,11 @@ use App\Models\Proposal;
 
 class ProposalObserver
 {
-    /**
-     * Handle the Proposal "created" event.
-     */
- public function created(Proposal $proposal): void
+    public function created(Proposal $proposal): void
     {
         $this->createGraduationProjectIfApproved($proposal);
     }
 
-        /**
-     * Handle the Proposal "updated" event.
-     */
     public function updated(Proposal $proposal): void
     {
         if ($proposal->wasChanged('status')) {
@@ -38,6 +32,17 @@ class ProposalObserver
             return;
         }
 
+        $proposal->load('team');
+
+        if (!$proposal->team) {
+            return;
+        }
+
+        // مهم: ما نعملش project لو التيم مش من السنة الفعالة
+        if ((int) $proposal->team->academic_year_id !== (int) $academicYear->id) {
+            return;
+        }
+
         GraduationProject::firstOrCreate(
             ['proposal_id' => $proposal->id],
             [
@@ -47,9 +52,4 @@ class ProposalObserver
             ]
         );
     }
-
-
-  
-
-   
 }

@@ -32,6 +32,19 @@ public function favorites()
         'student_user_id'
     );
 }
+public function scopeFilter($query, $filters)
+{
+    return $query
+        ->when($filters['search'] ?? null, fn($q, $search) =>
+            $q->where('title', 'like', "%{$search}%")
+        )
+        ->when($filters['department'] ?? null, fn($q, $department) =>
+            $q->where('department_id', $department)
+        )
+        ->when($filters['technology'] ?? null, fn($q, $technology) =>
+            $q->where('recommended_tools', 'like', "%{$technology}%")
+        );
+}
 
 
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Supervisor;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Announcement;
 use App\Models\Team;
 use Illuminate\Http\Request;
@@ -13,8 +14,17 @@ class AnnouncementController extends Controller
     {
         $user = $request->user();
 
+        $academicYear = AcademicYear::where('is_active', true)->first();
+
+        if (!$academicYear) {
+            return response()->json([
+                'message' => 'No active academic year found'
+            ], 404);
+        }
+
         $teams = Team::query()
-            ->whereHas('supervisors', function ($q) use ($user) {
+            ->where('academic_year_id', $academicYear->id)
+            ->whereHas('currentSupervisors', function ($q) use ($user) {
                 $q->where('users.id', $user->id);
             })
             ->with(['graduationProject.proposal'])
@@ -32,34 +42,53 @@ class AnnouncementController extends Controller
             'data' => $data,
         ], 200);
     }
+
     public function index(Request $request)
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    $announcements = Announcement::query()
-        ->with(['team.graduationProject.proposal'])
-        ->where('sent_by_user_id', $user->id)
-        ->latest()
-        ->get()
-        ->map(function ($announcement) {
-            return [
-                'team_id' => $announcement->team_id,
-                'project_title' => $announcement->team?->graduationProject?->proposal?->title,
-                'announcement_id' => $announcement->id,
-                'message' => $announcement->message,
-                'sent_at' => $announcement->created_at?->format('Y-m-d H:i:s'),
-            ];
-        })
-        ->values();
+        $academicYear = AcademicYear::where('is_active', true)->first();
 
-    return response()->json([
-        'message' => 'Announcements retrieved successfully',
-        'data' => $announcements,
-    ], 200);
-}
+        if (!$academicYear) {
+            return response()->json([
+                'message' => 'No active academic year found'
+            ], 404);
+        }
+
+        $announcements = Announcement::query()
+            ->with(['team.graduationProject.proposal'])
+            ->where('sent_by_user_id', $user->id)
+            ->where('academic_year_id', $academicYear->id)
+            ->latest()
+            ->get()
+            ->map(function ($announcement) {
+                return [
+                    'team_id' => $announcement->team_id,
+                    'project_title' => $announcement->team?->graduationProject?->proposal?->title,
+                    'announcement_id' => $announcement->id,
+                    'message' => $announcement->message,
+                    'sent_at' => $announcement->created_at?->format('Y-m-d H:i:s'),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'message' => 'Announcements retrieved successfully',
+            'data' => $announcements,
+        ], 200);
+    }
+
     public function store(Request $request)
     {
         $user = $request->user();
+
+        $academicYear = AcademicYear::where('is_active', true)->first();
+
+        if (!$academicYear) {
+            return response()->json([
+                'message' => 'No active academic year found'
+            ], 404);
+        }
 
         $validated = $request->validate([
             'send_to' => 'required|in:all_teams,single_team',
@@ -67,30 +96,31 @@ class AnnouncementController extends Controller
             'message' => 'required|string|max:3000',
         ]);
 
-        // هات كل التيمات اللي الدكتور الحالي مشرف عليها
         $supervisedTeamsQuery = Team::query()
+            ->where('academic_year_id', $academicYear->id)
             ->whereHas('currentSupervisors', function ($q) use ($user) {
                 $q->where('users.id', $user->id);
             });
 
         if ($validated['send_to'] === 'single_team') {
             $team = (clone $supervisedTeamsQuery)
+                ->with('graduationProject.proposal')
                 ->where('id', $validated['team_id'])
                 ->first();
 
-            if (! $team) {
+            if (!$team) {
                 return response()->json([
                     'message' => 'You are not authorized to send announcement to this team.'
                 ], 403);
             }
 
             $announcement = Announcement::create([
+                'academic_year_id' => $academicYear->id,
                 'team_id' => $team->id,
                 'sent_by_user_id' => $user->id,
                 'message' => $validated['message'],
             ]);
 
-            // optional activity log
             log_activity(
                 teamId: $team->id,
                 userId: $user->id,
@@ -113,7 +143,9 @@ class AnnouncementController extends Controller
             ], 201);
         }
 
-        $teams = $supervisedTeamsQuery->get();
+        $teams = $supervisedTeamsQuery
+            ->with('graduationProject.proposal')
+            ->get();
 
         if ($teams->isEmpty()) {
             return response()->json([
@@ -126,6 +158,7 @@ class AnnouncementController extends Controller
 
         foreach ($teams as $team) {
             $rows[] = [
+                'academic_year_id' => $academicYear->id,
                 'team_id' => $team->id,
                 'sent_by_user_id' => $user->id,
                 'message' => $validated['message'],

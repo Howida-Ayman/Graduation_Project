@@ -42,6 +42,30 @@ class PreviousProject extends Model
         'student_user_id'
     );
 }
+public function scopeFilter($query, $filters)
+{
+    return $query
+        ->when($filters['search'] ?? null, function ($q, $search) {
+            $q->whereHas('proposal', fn($q2) =>
+                $q2->where('title', 'like', "%{$search}%")
+            );
+        })
+        ->when($filters['department'] ?? null, function ($q, $department) {
+            $q->whereHas('proposal.department', fn($q2) =>
+                $q2->where('name', $department)
+            );
+        })
+        ->when($filters['technology'] ?? null, function ($q, $technology) {
+            $q->whereHas('proposal', fn($q2) =>
+                $q2->where('technologies', 'like', "%{$technology}%")
+            );
+        })
+        ->when($filters['year'] ?? null, function ($q, $year) {
+            $q->whereHas('proposal.team', fn($q2) =>
+                $q2->where('academic_year_id', $year)
+            );
+        });
+}
 
 
 

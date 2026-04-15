@@ -29,14 +29,20 @@ class TeamManagementController extends Controller
         };
 
         $currentMilestone = Milestone::query()
+            ->where('is_active', true)
             ->where('start_date', '<=', $now)
             ->where('deadline', '>=', $now)
             ->orderBy('phase_number')
             ->first();
 
-       
+        /*
+        |--------------------------------------------------------------------------
+        | Base query: كل تيمات المشرف في السنة الفعالة فقط
+        |--------------------------------------------------------------------------
+        */
         $baseTeamsQuery = Team::query()
-            ->whereHas('supervisors', function ($q) use ($user) {
+            ->activeYear()
+            ->whereHas('currentSupervisors', function ($q) use ($user) {
                 $q->where('users.id', $user->id);
             });
 
@@ -140,7 +146,6 @@ class TeamManagementController extends Controller
                     ];
                 }
 
-                // لو أي milestone سابقة كانت delayed تفضل الحالة delayed
                 $hasPreviousDelay = $team->teamMilestonestatus->contains(function ($status) use ($currentMilestone) {
                     if ($status->status !== 'delayed') {
                         return false;
@@ -157,7 +162,6 @@ class TeamManagementController extends Controller
                     ? 'delayed'
                     : ($currentMilestoneData['team_status'] ?? 'pending_submission');
 
-                // آخر submission وآخر file عمومًا
                 $latestSubmission = $team->submissions
                     ->sortByDesc('submitted_at')
                     ->first();
@@ -166,7 +170,6 @@ class TeamManagementController extends Controller
                     ? $latestSubmission->files->sortByDesc('uploaded_at')->first()
                     : null;
 
-                // card status من current milestone فقط
                 $cardStatus = 'nothing';
 
                 if ($currentMilestone) {
@@ -262,7 +265,7 @@ class TeamManagementController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Statistics (ثابتة - من كل تيمات المشرف، بدون search/filter)
+        | Statistics: السنة الفعالة فقط
         |--------------------------------------------------------------------------
         */
         $allProjectsForStats = $mapProjects($baseTeams);
@@ -281,7 +284,7 @@ class TeamManagementController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Filter options (من كل تيمات المشرف)
+        | Filter options: السنة الفعالة فقط
         |--------------------------------------------------------------------------
         */
         $departmentOptions = $baseTeams
@@ -339,7 +342,7 @@ class TeamManagementController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Side widgets (ثابتة - من كل تيمات المشرف)
+        | Side widgets: السنة الفعالة فقط
         |--------------------------------------------------------------------------
         */
         $upcomingMeetings = $baseTeams
@@ -437,7 +440,7 @@ class TeamManagementController extends Controller
         ]);
     }
 
-     public function viewTeam(Request $request, $teamId, TeamDetailsService $teamDetailsService)
+    public function viewTeam(Request $request, $teamId, TeamDetailsService $teamDetailsService)
     {
         $user = $request->user();
 
@@ -452,6 +455,7 @@ class TeamManagementController extends Controller
             'submissions.milestone',
             'submissions.submitter',
         ])
+        ->activeYear()
         ->where('id', $teamId)
         ->whereHas('currentSupervisors', function ($q) use ($user) {
             $q->where('users.id', $user->id);

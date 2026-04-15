@@ -13,14 +13,13 @@ class PreviousProjectController extends Controller
     public function show($id)
     {
         try {
-            $project = PreviousProject::with([
-                'proposal.department',
-                'proposal.team.academicYear',
-                'proposal.team.members',
-                'proposal.team.supervisors',
-                'proposal.projectType'
-            ])
-            ->findOrFail($id);
+           $project = PreviousProject::with([
+    'proposal.department',
+    'proposal.team.academicYear',
+    'proposal.team.members.user.studentprofile.department',
+    'proposal.team.supervisors',
+    'proposal.projectType'
+])->findOrFail($id);
 
             return response()->json([
                 'success' => true,
