@@ -23,7 +23,7 @@ return new class extends Migration
         ->restrictOnDelete()
         ->cascadeOnUpdate();
 
-    $table->enum('status', ['active', 'failed', 'graduated', 'inactive'])
+    $table->enum('status', ['active', 'failed', 'graduated'])
         ->default('active');
 
     $table->timestamps();

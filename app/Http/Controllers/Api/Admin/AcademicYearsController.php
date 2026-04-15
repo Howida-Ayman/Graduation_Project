@@ -29,13 +29,10 @@ class AcademicYearsController extends Controller
     {  
         $year=DB::transaction(function() use ($request)
         {
-            // 1. أول شيء: نجيب السنة النشطة الحالية ونجعلها غير نشطة
-        AcademicYear::where('is_active', true)->update(['is_active' => false]);
         
         // 2. بعد كده نضيف السنة الجديدة كنشطة
             $year=AcademicYear::create([
                 'code'=>$request->code,
-                'is_active'=>true
             ]);
             return $year;
             });
@@ -65,22 +62,62 @@ class AcademicYearsController extends Controller
         ], 404);
         }
     }
-    public function setActive(string $id)
+   public function setActive(string $id)
 {
     try {
-        DB::transaction(function() use ($id) {
-            // نشيل النشاط من الكل
-            AcademicYear::where('is_active', true)->update(['is_active' => false]);
-            
-            // نشغل السنة المطلوبة
+        $year = DB::transaction(function () use ($id) {
+            // السنة اللي كانت مفعلة قبل التغيير
+            $previousActiveYear = AcademicYear::where('is_active', true)->first();
+
+            // السنة المطلوب تفعيلها
             $year = AcademicYear::findOrFail($id);
-            $year->update(['is_active' => true]);
+
+            // لو هي بالفعل مفعلة، رجعها كما هي
+            if ($year->is_active) {
+                return $year;
+            }
+
+            // اقفل أي سنة مفعلة
+            AcademicYear::where('is_active', true)->update([
+                'is_active' => false
+            ]);
+
+            // فعل السنة المطلوبة
+            $year->update([
+                'is_active' => true
+            ]);
+
+            // لو كان فيه سنة قديمة مفعلة، انقل الطلبة الساقطين منها للسنة الجديدة
+            if ($previousActiveYear) {
+                $failedStudents = \App\Models\StudentEnrollment::where('academic_year_id', $previousActiveYear->id)
+                    ->where('status', 'failed')
+                    ->get();
+
+                foreach ($failedStudents as $enrollment) {
+                    \App\Models\StudentEnrollment::updateOrCreate(
+                        [
+                            'student_user_id' => $enrollment->student_user_id,
+                            'academic_year_id' => $year->id,
+                        ],
+                        [
+                            'status' => 'active'
+                        ]
+                    );
+                }
+            }
+
+            return $year->fresh();
         });
-        
+
         return response()->json([
-            'message' => 'Academic Year set as active successfully'
+            'message' => 'Academic Year set as active successfully',
+            'data' => [
+                'id' => $year->id,
+                'code' => $year->code,
+                'is_active' => $year->is_active,
+            ]
         ], 200);
-            
+
     } catch (\Throwable $th) {
         return response()->json([
             'message' => 'Academic Year not found'

@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'doctor'=>\App\Http\Middleware\DoctorMiddleware::class,
             'ta'=>\App\Http\Middleware\TAMiddleware::class,
             'supervisor'=>\App\Http\Middleware\SupervisorMiddleware::class,
+            'active.user' => \App\Http\Middleware\CheckUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

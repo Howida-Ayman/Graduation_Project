@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\User\UpdateProfileRequest;
 use App\Http\Resources\ProfileResource;
+use App\Models\User;
 // use Illuminate\Container\Attributes\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB ;
@@ -65,35 +66,22 @@ public function update(UpdateProfileRequest $request)
             'message' => 'Something went wrong'
         ], 500);
     }
+    
 }
+public function toggleUserStatus($id)
+{
+    $user = User::findOrFail($id);
 
+    // قلب الحالة
+    $user->is_active = !$user->is_active;
+    $user->save();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return response()->json([
+        'message' => $user->is_active
+            ? 'User activated successfully'
+            : 'User deactivated successfully',
+        'is_active' => $user->is_active
+    ], 200);
+}
 
 }

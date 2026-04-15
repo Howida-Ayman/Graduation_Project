@@ -14,30 +14,30 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DoctorController extends Controller
 {
-    public function index(Request $request)
-    {
-        $search = $request->search;
-        $perPage = $request->per_page ?? 10;
+  public function index(Request $request)
+{
+    $search = $request->search;
+    $perPage = $request->per_page ?? 10;
 
-        $doctors = User::with('staffprofile.department')
-            ->where('role_id', 2)
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('full_name', 'like', "%$search%")
-                        ->orWhere('national_id', 'like', "%$search%")
-                        ->orWhere('email', 'like', "%$search%")
-                        ->orWhereHas('staffprofile.department', function ($q) use ($search) {
-                            $q->where('name', 'like', "%$search%");
-                        });
-                });
-            })
-            ->paginate($perPage);
+    $doctors = User::with('staffprofile.department')
+        ->where('role_id', 2)
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', "%$search%")
+                    ->orWhere('national_id', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%")
+                    ->orWhereHas('staffprofile.department', function ($q) use ($search) {
+                        $q->where('name', 'like', "%$search%");
+                    });
+            });
+        })
+        ->paginate($perPage);
 
-        return response()->json([
-            'message' => 'Doctors retrieved successfully',
-            'data' => $doctors
-        ], 200);
-    }
+    return response()->json([
+        'message' => 'Doctors retrieved successfully',
+        'data' => $doctors
+    ], 200);
+}
 
     public function import(Request $request)
     {
@@ -97,7 +97,7 @@ class DoctorController extends Controller
                 ]);
             }
 
-            return $user->load('staffprofile.department');
+            return $user->load('staffprofile');
         });
 
         return response()->json([

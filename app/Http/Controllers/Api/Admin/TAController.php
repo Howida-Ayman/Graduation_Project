@@ -17,27 +17,29 @@ use function Symfony\Component\Clock\now;
 class TAController extends Controller
 {
     public function index(Request $request)
-    {
-        $search=$request->search;
-        $perpage= $request->per_page??10;
-        $TA=User::with('staffprofile')->where('role_id',3)
-        ->when($search,function($query) use($search){
+{
+    $search = $request->search;
+    $perPage = $request->per_page ?? 10;
+
+    $tas = User::with('staffprofile.department')
+        ->where('role_id', 3)
+        ->when($search, function ($query) use ($search) {
             $query->where(function ($q) use ($search) {
-            $q->where('full_name',"like","%$search%")
-            ->orWhere('national_id','like',"%$search%")
-            ->orWhere('email','like',"%$search%")
-            ->orWhereHas('staffprofile.department',function ($q) use($search)
-            {
-                $q->where('name','like',"%$search%");
+                $q->where('full_name', 'like', "%$search%")
+                    ->orWhere('national_id', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%")
+                    ->orWhereHas('staffprofile.department', function ($q) use ($search) {
+                        $q->where('name', 'like', "%$search%");
+                    });
             });
-        });
         })
-        ->paginate($perpage);
-        return response()->json([
-            'message'=>'Teacher Assistant retrieved successfully',
-            'data'=>$TA
-        ],200);
-    }
+        ->paginate($perPage);
+
+    return response()->json([
+        'message' => 'Teacher assistants retrieved successfully',
+        'data' => $tas
+    ], 200);
+}
 
     public function import(Request $request)
     {
@@ -124,11 +126,14 @@ class TAController extends Controller
         ],200);
 
     }
-    public function destroy()
+   public function deactivateAllTAs()
     {
-        $TA=User::where('role_id',3)->delete();
+        User::where('role_id', 3)->update([
+            'is_active' => false
+        ]);
+
         return response()->json([
-            'message'=>'TA deleted successfully'
-        ],200);
+            'message' => 'All TAs deactivated successfully'
+        ], 200);
     }
 }

@@ -11,80 +11,91 @@ class ProjectRuleController extends Controller
 {
     public function index()
     {
-        $teamRules=ProjectRule::all();
-        $project_type_requirements=RuleItem::select('id','section','rules')->where('section','project_type_requirements')->get();
-        $idea_selection_criteria=RuleItem::select('id','section','rules')->where('section','idea_selection_criteria')->get();
+        $teamRules = ProjectRule::first();
+
+        $projectTypeRequirements = RuleItem::select('id', 'section', 'rules')
+            ->where('section', 'project_type_requirements')
+            ->get();
+
+        $ideaSelectionCriteria = RuleItem::select('id', 'section', 'rules')
+            ->where('section', 'idea_selection_criteria')
+            ->get();
+
         return response()->json([
-            'message'=>'data retrieved successfully',
-            'Team Formation Rules'=>$teamRules,
-            'Graduation Project Rules'=>[
-                'Project Type Requirements'=>$project_type_requirements,
-                'Idea Selection Creiterias'=>$idea_selection_criteria
+            'message' => 'Data retrieved successfully',
+            'team_formation_rules' => $teamRules,
+            'graduation_project_rules' => [
+                'project_type_requirements' => $projectTypeRequirements,
+                'idea_selection_criteria' => $ideaSelectionCriteria
             ]
-        ],200);
+        ], 200);
     }
-    public function UpdateTeamRules(Request $request)
-    {
-       $request->validate([
-        'min_team_size'=>'required|integer|min:1|lt:max_team_size',
-        'max_team_size'=>'required|integer|min:2',
-        'team_formation_deadline'=>'required|date|after_or_equal:today'
-       ]);
-       $teamRules=ProjectRule::updateOrCreate(
-        ['id'=>1],[
-        'min_team_size'=>$request->min_team_size,
-        'max_team_size'=>$request->max_team_size,
-        'team_formation_deadline'=>$request->team_formation_deadline
-        ]);
-        return response()->json([
-            'message'=>'Team Formation Rules saved successfully',
-            'Team Formation Rules'=>$teamRules,
-        ],200);
-    }
-    public function StoreRules(Request $request,$section)
+
+    public function updateTeamRules(Request $request)
     {
         $request->validate([
-            'rule'=>'required|string'
+            'min_team_size' => 'required|integer|min:1|lt:max_team_size',
+            'max_team_size' => 'required|integer|min:2|gt:min_team_size',
+            'team_formation_deadline' => 'required|date|after_or_equal:today'
         ]);
-        if($section=='project_type_requirements')
-            {
-                $rule=RuleItem::create([
-                    'section'=>'project_type_requirements',
-                    'rules'=>$request->rule
-                ]);
-                return response()->json([
-                  'message'=>'Rules added successfully',
-                  'Project Type Requirements'=>RuleItem::select('id','rules')->where('section','project_type_requirements')->get()
-                ],201);
-            }
-        if($section=='idea_selection_criteria')
-            {
-                $rule=RuleItem::create([
-                    'section'=>'idea_selection_criteria',
-                    'rules'=>$request->rule
-                ]);
-                return response()->json([
-                  'message'=>'Rules added successfully',
-                  'Idea Selection Creiterias'=>RuleItem::select('id','rules')->where('section','idea_selection_criteria')->get()
-                ],201);
-            }
-            else{
-                return response()->json([
-                  'message'=>'invalid section',
-                ],500);
-            }
+
+        $teamRules = ProjectRule::updateOrCreate(
+            ['id' => 1],
+            [
+                'min_team_size' => $request->min_team_size,
+                'max_team_size' => $request->max_team_size,
+                'team_formation_deadline' => $request->team_formation_deadline
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Team formation rules saved successfully',
+            'team_formation_rules' => $teamRules,
+        ], 200);
     }
+
+    public function storeRule(Request $request, $section)
+    {
+        $allowedSections = ['project_type_requirements', 'idea_selection_criteria'];
+
+        if (!in_array($section, $allowedSections)) {
+            return response()->json([
+                'message' => 'Invalid section',
+                'allowed_sections' => $allowedSections
+            ], 400);
+        }
+
+        $request->validate([
+            'rule' => 'required|string'
+        ]);
+
+        RuleItem::create([
+            'section' => $section,
+            'rules' => $request->rule
+        ]);
+
+        return response()->json([
+            'message' => 'Rule added successfully',
+            'data' => RuleItem::select('id', 'section', 'rules')
+                ->where('section', $section)
+                ->get()
+        ], 201);
+    }
+
     public function deleteRule($id)
-    {try {
-        $rule=RuleItem::findOrFail($id)->delete();
-        return response()->json([
-            'message'=>'Rule deleted successfully',
-            ],200);
-    } catch (\Throwable $th) {
-        return response()->json([
-            'message'=>'something went wrong',
-            ],500);
-    }
-        
+    {
+        try {
+            $rule = RuleItem::findOrFail($id);
+            $rule->delete();
+
+            return response()->json([
+                'message' => 'Rule deleted successfully',
+            ], 200);
+
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'Rule not found',
+            ], 404);
+        }
     }
 }

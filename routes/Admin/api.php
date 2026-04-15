@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
 use App\Http\Controllers\Api\Admin\TeamController ;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
+use App\Http\Controllers\Api\User\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -37,7 +38,7 @@ Route::prefix('admin')->group(function(){
     Route::get('/export',[TAController::class,'export'])->name('TA.export');
     Route::post('/store',[TAController::class,'store'])->name(name: 'TA.store');
     Route::put('/{id}/update',[TAController::class,'update'])->name('TA.update'); 
-    Route::delete('/delete',[TAController::class,'destroy']);
+    Route::post('/deactivate-all',[TAController::class,'deactivateAllTAs']);
     });
 
     //import & export students
@@ -47,10 +48,10 @@ Route::prefix('admin')->group(function(){
     Route::get('/export',[StudentController::class,'export'])->name('student.export');
     Route::post('/store',[StudentController::class,'store'])->name(name: 'student.store');
     Route::put('/{id}/update',[StudentController::class,'update'])->name('student.update'); 
-    Route::delete('/delete',[StudentController::class,'destroy']);
+    Route::post('/deactivate-all',[StudentController::class,'deactivateAllStudents']);
     });
-    //delete user(student or doctor or TA)
-    Route::delete('/{id}/user/delete',[StudentController::class,'deleteUser']);
+    //deactivate user(student or doctor or TA)
+    Route::post('/{id}/user/toggle-status',[UserController::class,'toggleUserStatus']);
 
     //Departments
     Route::prefix('departments')->group(function(){
@@ -68,7 +69,7 @@ Route::prefix('admin')->group(function(){
     //team & project rules
     Route::prefix('project_rules')->group(function(){
         Route::put('store/team rules',[ProjectRuleController::class,'UpdateTeamRules']);
-        Route::post('/{section}',[ProjectRuleController::class,'StoreRules']);
+        Route::post('/{section}',[ProjectRuleController::class,'storeRule']);
         Route::delete('/{id}/delete',[ProjectRuleController::class,'deleteRule']);
     });
 
