@@ -4,6 +4,7 @@
 use App\Http\Controllers\Api\Requests\Supervisor\SupervisionRequestsController;
 use App\Http\Controllers\Api\Submission\SubmissionController;
 use App\Http\Controllers\Api\Supervisor\AnnouncementController;
+use App\Http\Controllers\Api\Supervisor\MeetingController;
 use App\Http\Controllers\Api\Supervisor\MilestoneManagementController;
 use App\Http\Controllers\Api\Supervisor\TeamManagementController;
 use App\Http\Controllers\Api\Supervisor\SupervisorMilestoneNoteController;
@@ -34,6 +35,14 @@ Route::middleware('auth:sanctum')->group(function()
             Route::get('{milestoneId}/note', [SupervisorMilestoneNoteController::class, 'show']);
             Route::post('{milestoneId}/note', [SupervisorMilestoneNoteController::class, 'storeOrUpdate']);
            });
+           //meetings
+           Route::prefix('/meetings')->group(function () {
+             Route::get('/teams', [MeetingController::class, 'teamsList']);
+             Route::get('/', [MeetingController::class, 'index']);
+             Route::post('/', [MeetingController::class, 'store']);
+             Route::put('/{id}', [MeetingController::class, 'update']);
+             Route::delete('/{id}/delete', [MeetingController::class, 'destroy']);
+            });
         });
     });
 

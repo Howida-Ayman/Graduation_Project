@@ -11,6 +11,7 @@ class Meeting extends Model
         'team_id',
         'scheduled_at',
         'created_by_user_id',
+        'meeting_link',
     ];
 
     protected $casts = [

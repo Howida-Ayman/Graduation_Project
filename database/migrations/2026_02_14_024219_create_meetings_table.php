@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
             $table->dateTime('scheduled_at');
             $table->foreignId('created_by_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
+            $table->string('meeting_link')->nullable();
             $table->timestamps();
 
             $table->index(['team_id']);
