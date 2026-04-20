@@ -124,4 +124,41 @@ class LibraryController extends Controller
             ]
         ], 200);
     }
+
+
+    /**
+ * Toggle favorite for suggested project
+ */
+public function toggleSuggestedFavorite($id)
+{
+    $user = request()->user();
+    $project = SuggestedProject::findOrFail($id);
+    
+    $isFavorited = $user->toggleSuggestedFavorite($id);
+    
+    return response()->json([
+        'success' => true,
+        'message' => $isFavorited ? 'Added to favorites' : 'Removed from favorites',
+        'is_favorited' => $isFavorited,
+        'favorites_count' => $project->favorites()->count(),
+    ]);
+}
+
+/**
+ * Toggle favorite for previous project
+ */
+public function togglePreviousFavorite($id)
+{
+    $user = request()->user();
+    $project = PreviousProject::findOrFail($id);
+    
+    $isFavorited = $user->togglePreviousFavorite($id);
+    
+    return response()->json([
+        'success' => true,
+        'message' => $isFavorited ? 'Added to favorites' : 'Removed from favorites',
+        'is_favorited' => $isFavorited,
+        'favorites_count' => $project->favorites()->count(),
+    ]);
+}
 }

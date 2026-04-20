@@ -23,6 +23,7 @@ class SuggestedProject extends Model
     return $this->belongsTo(Department::class);
 }
 
+// أضيفي العلاقة دي
 public function favorites()
 {
     return $this->belongsToMany(
@@ -30,7 +31,13 @@ public function favorites()
         'suggested_project_favorites',
         'suggested_project_id',
         'student_user_id'
-    );
+    )->withTimestamps();
+}
+
+// Helper method to check if user favorited
+public function isFavoritedBy($userId)
+{
+    return $this->favorites()->where('student_user_id', $userId)->exists();
 }
 public function scopeFilter($query, $filters)
 {

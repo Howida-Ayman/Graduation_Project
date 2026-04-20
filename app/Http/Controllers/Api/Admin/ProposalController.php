@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\DatabaseNotification;
 use App\Models\Proposal;
+use App\Models\TeamMembership;
+use App\Models\User;
+use App\Notifications\ProposalStatusNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ProposalController extends Controller
 {
@@ -52,6 +57,43 @@ class ProposalController extends Controller
             $proposal->update([
                 'status' => $status,
             ]);
+
+            // بعد update الـ proposal
+if ($status === 'approved' || $status === 'rejected') {
+    $academicYear = AcademicYear::where('is_active', true)->first();
+    $team = $proposal->team;
+    
+    $members = TeamMembership::where('team_id', $team->id)
+        ->where('status', 'active')
+        ->with('user')
+        ->get();
+    
+    foreach ($members as $member) {
+        if ($member->user) {
+            DatabaseNotification::create([
+                'id' => (string) Str::uuid(),
+                'type' => 'proposal_' . $status,
+                'notifiable_type' => User::class,
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => 'proposal_' . $status,
+                    'proposal_id' => $proposal->id,
+                    'proposal_title' => $proposal->title,
+                    'team_id' => $team->id,
+                    'message' => $status === 'approved' 
+                        ? "Your project idea '{$proposal->title}' has been approved!"
+                        : "Your project idea '{$proposal->title}' has been rejected.",
+                    'icon' => $status === 'approved' ? 'check-circle' : 'x-circle',
+                    'color' => $status === 'approved' ? 'green' : 'red',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
 
             return response()->json([
                 'message' => "Proposal {$status} successfully",

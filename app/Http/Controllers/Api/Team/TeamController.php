@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api\Team;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\DatabaseNotification;
 use App\Models\ProjectRule;
 use App\Models\Proposal;
 use App\Models\TeamMembership;
+use App\Models\TeamNote;
+use App\Models\User;
+use App\Notifications\TeamNoteNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -264,4 +268,91 @@ class TeamController extends Controller
             ], 500);
         }
     }
+
+/**
+ * Leave a note to team
+ */
+public function leaveNote(Request $request)
+{
+    $user = $request->user();
+    
+    $request->validate([
+        'note' => 'required|string|max:1000',
+    ]);
+    
+    // جلب الفريق
+    $membership = TeamMembership::where('student_user_id', $user->id)
+        ->where('status', 'active')
+        ->first();
+    
+    if (!$membership) {
+        return response()->json([
+            'success' => false,
+            'message' => 'You are not in any team'
+        ], 403);
+    }
+    
+    $team = $membership->team;
+    
+    // حفظ الملاحظة في جدول team_notes
+    $teamNote = TeamNote::create([
+        'team_id' => $team->id,
+        'user_id' => $user->id,
+        'note' => $request->note,
+    ]);
+    
+    // جلب السنة الدراسية النشطة
+    $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+    
+    if (!$activeAcademicYear) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No active academic year found'
+        ], 400);
+    }
+    
+    // إرسال إشعار لجميع أعضاء الفريق (ما عدا كاتب الملاحظة)
+    $members = TeamMembership::where('team_id', $team->id)
+        ->where('status', 'active')
+        ->where('student_user_id', '!=', $user->id)
+        ->with('user')
+        ->get();
+    
+    foreach ($members as $member) {
+        if ($member->user) {
+            // إنشاء الإشعار يدويًا
+            DatabaseNotification::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'team_note',
+                'notifiable_type' => User::class,
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $activeAcademicYear->id,
+                'data' => [
+                    'type' => 'team_note',
+                    'from_user_id' => $user->id,
+                    'from_user_name' => $user->full_name,
+                    'team_id' => $team->id,
+                    'team_name' => $team->name ?? "Team {$team->id}",
+                    'note' => $request->note,
+                    'message' => "{$user->full_name} left a note",
+                    'icon' => 'message',
+                    'color' => 'gray',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Note sent successfully',
+        'data' => [
+            'note_id' => $teamNote->id,
+            'note' => $request->note,
+            'created_at' => now(),
+        ]
+    ], 201);
+}
 }

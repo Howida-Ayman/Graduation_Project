@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Api\Submission;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\DatabaseNotification;
 use App\Models\Milestone;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
 use App\Models\Team;
 use App\Models\TeamMembership;
 use App\Models\TeamMilestonStatus;
+use App\Models\User;
+use App\Notifications\FeedbackAddedNotification;
+use App\Notifications\GradeAddedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class SubmissionController extends Controller
 {
@@ -292,6 +297,37 @@ class SubmissionController extends Controller
         $file->update([
             'feedback' => $request->feedback,
         ]);
+        // بعد update الـ file
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+$team = $file->submission->team;
+$members = TeamMembership::where('team_id', $team->id)
+    ->where('status', 'active')
+    ->with('user')
+    ->get();
+
+foreach ($members as $member) {
+    if ($member->user) {
+        DatabaseNotification::create([
+            'id' => (string) Str::uuid(),
+            'type' => 'feedback_added',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $member->user->id,
+            'academic_year_id' => $academicYear->id,
+            'data' => [
+                'type' => 'feedback_added',
+                'file_name' => $file->original_name,
+                'feedback' => $request->feedback,
+                'message' => "New feedback on your file '{$file->original_name}'",
+                'icon' => 'message-circle',
+                'color' => 'purple',
+                'created_at' => now(),
+            ],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+}
 
         $projectTitle = $team?->graduationProject?->proposal?->title ?? 'Unknown Project';
 
@@ -358,6 +394,38 @@ class SubmissionController extends Controller
             'graded_by_user_id' => $user->id,
             'graded_at' => now(),
         ]);
+        // بعد update الـ status
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+$team = Team::find($teamId);
+$members = TeamMembership::where('team_id', $team->id)
+    ->where('status', 'active')
+    ->with('user')
+    ->get();
+
+foreach ($members as $member) {
+    if ($member->user) {
+        DatabaseNotification::create([
+            'id' => (string) Str::uuid(),
+            'type' => 'grade_added',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $member->user->id,
+            'academic_year_id' => $academicYear->id,
+            'data' => [
+                'type' => 'grade_added',
+                'milestone_id' => $milestoneId,
+                'milestone_title' => $status->milestone->title,
+                'grade' => $request->grade,
+                'message' => "Your team received {$request->grade}% for milestone '{$status->milestone->title}'",
+                'icon' => 'star',
+                'color' => 'yellow',
+                'created_at' => now(),
+            ],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+}
 
         $projectTitle = $status->team?->graduationProject?->proposal?->title ?? 'Unknown Project';
 

@@ -28,12 +28,17 @@ Route::get('profile',[UserController::class,'profile'])->name('profile');
 Route::put('profile',[UserController::class,'update'])->name('profile.update');
 Route::get('academic-years', [LookupController::class, 'academicYears']);
 Route::get('departments', [LookupController::class, 'departments']);
+
+//favorites
+Route::post('/library/suggested/{id}/favorite', [LibraryController::class, 'toggleSuggestedFavorite']);
+Route::post('/library/previous/{id}/favorite', [LibraryController::class, 'togglePreviousFavorite']);
 Route::get('/library/favorites', [LibraryController::class, 'favorites']);
 
 
 //teams
 Route::get('/my-team', [TeamController::class, 'index']);
 Route::post('/my-team/leave', [TeamController::class, 'leave']);
+Route::post('/my-team/note', [TeamController::class, 'leaveNote']);
 
 
 // Proposals
@@ -49,7 +54,7 @@ Route::post('/submission/upload', [SubmissionController::class, 'uploadSubmissio
 Route::get('/notifications', [NotificationController::class, 'index']);
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
 Route::get('/available/teams', [StudentsRequestsController::class, 'availableTeams']);
 Route::get('/available/students', [StudentsRequestsController::class, 'availableStudents']);

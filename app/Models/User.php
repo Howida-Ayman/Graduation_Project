@@ -157,6 +157,8 @@ public function enrollments()
 {
     return $this->hasMany(StudentEnrollment::class, 'student_user_id');
 }
+
+// Suggested Projects Favorites
 public function favoriteSuggestedProjects()
 {
     return $this->belongsToMany(
@@ -164,9 +166,10 @@ public function favoriteSuggestedProjects()
         'suggested_project_favorites',
         'student_user_id',
         'suggested_project_id'
-    );
+    )->withTimestamps();
 }
 
+// Previous Projects Favorites
 public function favoritePreviousProjects()
 {
     return $this->belongsToMany(
@@ -174,8 +177,39 @@ public function favoritePreviousProjects()
         'previous_project_favorites',
         'student_user_id',
         'previous_project_id'
-    );
+    )->withTimestamps();
 }
+
+// Helper methods
+public function toggleSuggestedFavorite($projectId)
+{
+    if ($this->favoriteSuggestedProjects()->where('suggested_project_id', $projectId)->exists()) {
+        $this->favoriteSuggestedProjects()->detach($projectId);
+        return false; // removed
+    } else {
+        $this->favoriteSuggestedProjects()->attach($projectId);
+        return true; // added
+    }
+}
+
+public function togglePreviousFavorite($projectId)
+{
+    if ($this->favoritePreviousProjects()->where('previous_project_id', $projectId)->exists()) {
+        $this->favoritePreviousProjects()->detach($projectId);
+        return false;
+    } else {
+        $this->favoritePreviousProjects()->attach($projectId);
+        return true;
+    }
+}
+
+// في app/Models/User.php
+public function notifications()
+{
+    return $this->hasMany(DatabaseNotification::class, 'notifiable_id')
+        ->where('notifiable_type', User::class);
+}
+
 
 }
 
