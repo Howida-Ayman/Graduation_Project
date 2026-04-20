@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\AcademicYear;
 use Illuminate\Database\Seeder;
 use App\Models\Proposal;
 use App\Models\Team;
@@ -15,8 +14,7 @@ class ProposalSeeder extends Seeder
     {
         $teams = Team::all();
         $projectType = ProjectType::first();
-        $admin = User::where('role_id', 1)->first(); // نفترض 1 = admin\
-        $year=AcademicYear::where('is_active',true)->first();
+        $admin = User::where('role_id', 1)->first(); // نفترض 1 = admin
 
         foreach ($teams as $team) {
 
@@ -30,7 +28,6 @@ class ProposalSeeder extends Seeder
                 'problem_statement' => 'How to leverage AI to solve real-world problems?',
                 'solution' => 'By developing an intelligent system that can analyze data and provide actionable insights.',
                 'technologies' => 'Laravel, Flutter, AI',
-                'academic_year_id' => $year->id,
                 'status' => 'approved',
                 'decided_by_admin_id' => $admin?->id,
                 'decided_at' => now(),
