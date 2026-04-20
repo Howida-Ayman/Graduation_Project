@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             MilestoneRequirementsSeeder::class,
             TeamSeeder::class,
             ProposalSeeder::class,
+            GraduationProjectsSeeder::class,
             // PreviousProjectSeeder::class,
             // SuggestedProjectSeeder::class,
             // PreviousProjectFavoritesSeeder::class,

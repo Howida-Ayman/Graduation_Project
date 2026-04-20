@@ -101,35 +101,6 @@ class SubmissionSeeder extends Seeder
             ]
         );
 
-        // Team 2 -> late
-        $submittedAtTeam2M1 = Carbon::parse($milestone1->deadline)->addDays(2);
-        $createSubmission(
-            2,
-            $milestone1->id,
-            $teamLeader(2),
-            $submittedAtTeam2M1,
-            'Phase 1 submission - team 2 (late)',
-            [
-                [
-                    'file_url' => '/storage/submissions/team2/m1/idea_brief.pdf',
-                    'original_name' => 'idea_brief.pdf',
-                ],
-                [
-                    'file_url' => '/storage/submissions/team2/m1/objectives.docx',
-                    'original_name' => 'objectives.docx',
-                ],
-            ]
-        );
-
-        DB::table('team_milestone_status')->updateOrInsert(
-            ['team_id' => 2, 'milestone_id' => $milestone1->id],
-            [
-                'status' => 'delayed',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
-
         // Team 3 -> on time
         $submittedAtTeam3M1 = Carbon::parse($milestone1->deadline)->subDay();
         $createSubmission(
@@ -154,35 +125,6 @@ class SubmissionSeeder extends Seeder
             ['team_id' => 3, 'milestone_id' => $milestone1->id],
             [
                 'status' => 'on_track',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
-
-        // Team 4 -> late
-        $submittedAtTeam4M1 = Carbon::parse($milestone1->deadline)->addDays(4);
-        $createSubmission(
-            4,
-            $milestone1->id,
-            $teamLeader(4),
-            $submittedAtTeam4M1,
-            'Phase 1 submission - team 4 (late)',
-            [
-                [
-                    'file_url' => '/storage/submissions/team4/m1/phase1_notes.pdf',
-                    'original_name' => 'phase1_notes.pdf',
-                ],
-                [
-                    'file_url' => '/storage/submissions/team4/m1/team_plan.docx',
-                    'original_name' => 'team_plan.docx',
-                ],
-            ]
-        );
-
-        DB::table('team_milestone_status')->updateOrInsert(
-            ['team_id' => 4, 'milestone_id' => $milestone1->id],
-            [
-                'status' => 'delayed',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]

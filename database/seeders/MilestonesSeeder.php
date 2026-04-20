@@ -21,7 +21,7 @@ class MilestonesSeeder extends Seeder
                 'title' => 'Proposal Submission',
                 'description' => 'Submit full proposal document',
                 'phase_number' => 2,
-                'start_date' => now(),
+                'start_date' => now()->subDay(),
                 'deadline' => now()->addDays(10),
             ],
             [

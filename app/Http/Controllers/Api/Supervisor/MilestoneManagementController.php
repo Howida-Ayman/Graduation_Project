@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\Milestone;
 use App\Models\Submission;
 use App\Models\Team;
+use App\Models\TeamMilestonStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -59,8 +60,9 @@ class MilestoneManagementController extends Controller
 
         $teamIds = $teams->pluck('id')->values();
 
-        // كل المايلستونز global
+        // كل المايلستونز global + requirements
         $milestones = Milestone::query()
+            ->with('requirements')
             ->orderBy('phase_number')
             ->get();
 
@@ -82,14 +84,25 @@ class MilestoneManagementController extends Controller
                 return $group->first();
             });
 
-        $cards = $milestones->map(function ($milestone) use ($teams, $latestSubmissions, $now) {
+        // team milestone status rows
+        $teamMilestoneStatuses = TeamMilestonStatus::query()
+            ->whereIn('team_id', $teamIds)
+            ->whereIn('milestone_id', $milestoneIds)
+            ->get()
+            ->keyBy(function ($row) {
+                return $row->milestone_id . '_' . $row->team_id;
+            });
+
+        $cards = $milestones->map(function ($milestone) use ($teams, $latestSubmissions, $teamMilestoneStatuses, $now) {
             $teamsTotal = $teams->count();
             $submittedCount = 0;
             $lateTeamsCount = 0;
+            $gradedTeamsCount = 0;
 
             foreach ($teams as $team) {
                 $key = $milestone->id . '_' . $team->id;
                 $submission = $latestSubmissions->get($key);
+                $statusRow = $teamMilestoneStatuses->get($key);
 
                 if ($submission) {
                     $submittedCount++;
@@ -97,6 +110,10 @@ class MilestoneManagementController extends Controller
                     if ($milestone->deadline && $now->gt(Carbon::parse($milestone->deadline))) {
                         $lateTeamsCount++;
                     }
+                }
+
+                if (!is_null($statusRow?->milestone_grade)) {
+                    $gradedTeamsCount++;
                 }
             }
 
@@ -107,9 +124,17 @@ class MilestoneManagementController extends Controller
                 'title' => $milestone->title,
                 'description' => $milestone->description,
                 'phase_number' => $milestone->phase_number,
-                'status' => $milestone->status, // الحالة العامة من الجدول
+                'status' => $milestone->status,
                 'start_date' => optional($milestone->start_date)?->format('Y-m-d'),
                 'deadline' => optional($milestone->deadline)?->format('Y-m-d'),
+
+                'requirements' => $milestone->requirements->map(function ($req) {
+                    return [
+                        'id' => $req->id,
+                        'requirement' => $req->requirement,
+                    ];
+                })->values(),
+
                 'teams_total' => $teamsTotal,
                 'teams_submitted' => $submittedCount,
                 'teams_not_submitted' => max($teamsTotal - $submittedCount, 0),
@@ -118,7 +143,6 @@ class MilestoneManagementController extends Controller
             ];
         })->values();
 
-        // tab counts
         $tabs = [
             'all' => $cards->count(),
             'on_progress' => $cards->where('status', 'on_progress')->count(),
@@ -127,7 +151,6 @@ class MilestoneManagementController extends Controller
             'overdue' => $cards->where('has_overdue', true)->count(),
         ];
 
-        // filter cards by selected tab
         $filteredCards = match ($selectedTab) {
             'on_progress' => $cards->where('status', 'on_progress')->values(),
             'completed' => $cards->where('status', 'completed')->values(),
@@ -178,9 +201,8 @@ class MilestoneManagementController extends Controller
             ], 404);
         }
 
-        $milestone = Milestone::findOrFail($milestoneId);
+        $milestone = Milestone::with('requirements')->findOrFail($milestoneId);
 
-        // التيمات اللي المشرف الحالي مشرف عليها في السنة الفعالة فقط
         $teams = Team::query()
             ->where('academic_year_id', $activeYear->id)
             ->whereHas('currentSupervisors', function ($q) use ($user) {
@@ -194,7 +216,6 @@ class MilestoneManagementController extends Controller
 
         $teamIds = $teams->pluck('id')->values();
 
-        // latest submission فقط لنفس milestone
         $latestSubmissions = Submission::query()
             ->whereIn('team_id', $teamIds)
             ->where('milestone_id', $milestone->id)
@@ -208,16 +229,37 @@ class MilestoneManagementController extends Controller
                 return $group->first();
             });
 
-        $teamsData = $teams->map(function ($team) use ($milestone, $latestSubmissions, $now) {
-            $submission = $latestSubmissions->get($team->id);
+        $teamMilestoneStatuses = TeamMilestonStatus::query()
+            ->whereIn('team_id', $teamIds)
+            ->where('milestone_id', $milestone->id)
+            ->get()
+            ->keyBy('team_id');
 
-            if ($submission) {
-                $teamStatus = 'submitted';
-            } else {
-                $teamStatus = ($milestone->deadline && $now->gt(Carbon::parse($milestone->deadline)))
-                    ? 'late'
-                    : 'not_yet';
-            }
+        $requirements = $milestone->requirements->map(function ($req) {
+            return [
+                'id' => $req->id,
+                'requirement' => $req->requirement,
+            ];
+        })->values();
+
+        $teamsData = $teams->map(function ($team) use ($milestone, $latestSubmissions, $teamMilestoneStatuses, $requirements, $now) {
+            $submission = $latestSubmissions->get($team->id);
+            $statusRow = $teamMilestoneStatuses->get($team->id);
+
+            $daysLate = null;
+            $lateSince = null;
+
+           if ($submission) {
+             $teamStatus = 'submitted';
+          } else {
+          if ($milestone->deadline && $now->gt(Carbon::parse($milestone->deadline))) {
+           $teamStatus = 'late';
+           $daysLate = Carbon::parse($milestone->deadline)->startOfDay()->diffInDays(now()->startOfDay());
+           $lateSince = Carbon::parse($milestone->deadline)->format('Y-m-d');
+          } else {
+           $teamStatus = 'not_yet';
+          }
+          }
 
             return [
                 'team_id' => $team->id,
@@ -227,6 +269,10 @@ class MilestoneManagementController extends Controller
                     'name' => $team->department?->name,
                 ],
                 'status' => $teamStatus,
+                'days_late' => $daysLate,
+                'late_since' => $lateSince,
+                'milestone_grade' => $statusRow?->milestone_grade,
+                'graded_at' => $statusRow?->graded_at?->format('Y-m-d H:i:s'),
                 'submitted_at' => $submission?->submitted_at?->format('Y-m-d H:i:s'),
                 'submission_id' => $submission?->id,
                 'files' => $submission
@@ -264,6 +310,7 @@ class MilestoneManagementController extends Controller
                     'status' => $milestone->status,
                     'start_date' => optional($milestone->start_date)?->format('Y-m-d'),
                     'deadline' => optional($milestone->deadline)?->format('Y-m-d'),
+                    
                 ],
                 'selected_type' => $type,
                 'summary' => [
@@ -271,6 +318,7 @@ class MilestoneManagementController extends Controller
                     'submitted' => $teamsData->where('status', 'submitted')->count(),
                     'late' => $teamsData->where('status', 'late')->count(),
                     'not_yet' => $teamsData->where('status', 'not_yet')->count(),
+                    'graded' => $teamsData->filter(fn($team) => !is_null($team['milestone_grade']))->count(),
                 ],
                 'teams' => $filteredTeams,
             ]

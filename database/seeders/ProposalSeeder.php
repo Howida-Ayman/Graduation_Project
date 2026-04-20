@@ -61,7 +61,7 @@ class ProposalSeeder extends Seeder
                     },
                     'attachment_file' => null,
                     'image_url' => null,
-                    'status' => 'pending',
+                    'status' => 'approved',
                     'decided_by_admin_id' => null,
                     'decided_at' => null,
                 ]
