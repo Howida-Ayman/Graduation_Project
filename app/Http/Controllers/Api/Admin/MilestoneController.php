@@ -4,10 +4,17 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Admin\MilestonesRequest;
+use App\Models\AcademicYear;
+use App\Models\DatabaseNotification;
 use App\Models\Milestone;
+use App\Models\Team;
+use App\Models\TeamMembership;
+use App\Models\User;
+use App\Notifications\MilestoneNoteNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 use function PHPUnit\Framework\countOf;
 
@@ -372,6 +379,43 @@ public function storeNote(Request $request, $milestone_id)
         $milestone->update([
             'notes' => $request->note
         ]);
+
+        // بعد update الـ milestone
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+// جلب كل الفرق اللي عندها هذا الميلستون
+$teams = Team::where('academic_year_id', $academicYear->id)->get();
+
+foreach ($teams as $team) {
+    $members = TeamMembership::where('team_id', $team->id)
+        ->where('status', 'active')
+        ->with('user')
+        ->get();
+    
+    foreach ($members as $member) {
+        if ($member->user) {
+            DatabaseNotification::create([
+                'id' => (string) Str::uuid(),
+                'type' => 'milestone_note',
+                'notifiable_type' => User::class,
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => 'milestone_note',
+                    'milestone_id' => $milestone->id,
+                    'milestone_title' => $milestone->title,
+                    'note' => $request->note,
+                    'message' => "New note added to milestone '{$milestone->title}'",
+                    'icon' => 'clipboard',
+                    'color' => 'blue',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
 
         return response()->json([
             'message' => 'Note added successfully',

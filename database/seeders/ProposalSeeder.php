@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AcademicYear;
 use Illuminate\Database\Seeder;
 use App\Models\Proposal;
 use App\Models\Team;

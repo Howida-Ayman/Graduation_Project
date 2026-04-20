@@ -33,14 +33,21 @@ class PreviousProject extends Model
         return $this->belongsTo(Proposal::class);
     }
 
-    public function favorites()
+// أضيفي العلاقة دي
+public function favorites()
 {
     return $this->belongsToMany(
         User::class,
         'previous_project_favorites',
         'previous_project_id',
         'student_user_id'
-    );
+    )->withTimestamps();
+}
+
+// Helper method
+public function isFavoritedBy($userId)
+{
+    return $this->favorites()->where('student_user_id', $userId)->exists();
 }
 public function scopeFilter($query, $filters)
 {
