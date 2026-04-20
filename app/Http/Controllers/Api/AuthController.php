@@ -48,24 +48,24 @@ class AuthController extends Controller
     $isLeader = false;
     $teamId = null;
 
-    if ($user->role?->code === 'student' && $activeAcademicYear) {
-        $enrollment = $user->enrollments()
-            ->where('academic_year_id', $activeAcademicYear->id)
-            ->first();
+if (strtolower($user->role?->code ?? '') === 'student' && $activeAcademicYear) {
+    $enrollment = $user->enrollments()
+        ->where('academic_year_id', $activeAcademicYear->id)
+        ->first();
 
-        $membership = TeamMembership::with('team')
-            ->where('student_user_id', $user->id)
-            ->where('academic_year_id', $activeAcademicYear->id)
-            ->where('status', 'active')
-            ->first();
+    $membership = TeamMembership::with('team')
+        ->where('student_user_id', $user->id)
+        ->where('academic_year_id', $activeAcademicYear->id)
+        ->where('status', 'active')
+        ->first();
 
-        $hasTeam = !is_null($membership);
-        $teamId = $membership?->team_id;
+    $hasTeam = !is_null($membership);
+    $teamId = $membership?->team_id;
 
-        if ($hasTeam && $membership->team) {
-            $isLeader = ((int) $membership->team->leader_user_id === (int) $user->id);
-        }
+    if ($hasTeam && $membership->team) {
+        $isLeader = ((int) $membership->team->leader_user_id === (int) $user->id);
     }
+}
 
     $data = [
         'id' => $user->id,

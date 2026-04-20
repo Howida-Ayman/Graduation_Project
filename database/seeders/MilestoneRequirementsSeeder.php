@@ -8,45 +8,53 @@ use Illuminate\Support\Facades\DB;
 class MilestoneRequirementsSeeder extends Seeder
 {
     public function run(): void
-     {
-    //     // هات milestones (ممكن تخص سنة معينة لو تحبي)
-    //     $milestones = DB::table('milestones')->select('id', 'sort_order')->get();
+    {
+        $milestones = DB::table('milestones')->select('id', 'phase_number')->orderBy('phase_number')->get();
 
-    //     foreach ($milestones as $m) {
-    //         $requirements = match ((int)$m->sort_order) {
-    //             1 => [
-    //                 'Project idea + problem statement',
-    //                 'Scope and objectives',
-    //                 'Initial plan (timeline + roles)',
-    //             ],
-    //             2 => [
-    //                 'Wireframes',
-    //                 'UI prototype (Figma or similar)',
-    //                 'User flow / UX notes',
-    //             ],
-    //             3 => [
-    //                 'Database schema / ERD',
-    //                 'Core API endpoints implemented',
-    //                 'Integration & testing evidence',
-    //             ],
-    //             4 => [
-    //                 'Testing report',
-    //                 'Deployment link / demo video',
-    //                 'Final documentation',
-    //             ],
-    //             default => ['Requirement 1'],
-    //         };
+        foreach ($milestones as $m) {
+            $requirements = match ((int) $m->phase_number) {
+                1 => [
+                    'Approved project idea summary',
+                    'Problem statement and target users',
+                    'Scope, objectives, and expected output',
+                    'Team roles and initial work plan',
+                ],
+                2 => [
+                    'Wireframes for all main screens',
+                    'UI prototype or clickable design',
+                    'User flow and navigation map',
+                    'Design notes and branding direction',
+                ],
+                3 => [
+                    'Database schema / ERD',
+                    'Core backend modules implemented',
+                    'API endpoints documentation',
+                    'Integration evidence between frontend and backend',
+                ],
+                4 => [
+                    'Testing report and bug fixes summary',
+                    'Deployment link or demo build',
+                    'User manual and technical documentation',
+                    'Presentation deck and final demo preparation',
+                ],
+                default => [
+                    'Milestone deliverable 1',
+                    'Milestone deliverable 2',
+                ],
+            };
 
-    //         foreach ($requirements as $req) {
-    //             // updateOrInsert لتجنب التكرار
-    //             DB::table('milestone_requirements')->updateOrInsert(
-    //                 ['milestone_id' => $m->id, 'requirement' => $req],
-    //                 [
-    //                     'created_at' => now(),
-    //                     'updated_at' => now(),
-    //                 ]
-    //             );
-    //         }
-    //     }
+            foreach ($requirements as $req) {
+                DB::table('milestone_requirements')->updateOrInsert(
+                    [
+                        'milestone_id' => $m->id,
+                        'requirement' => $req,
+                    ],
+                    [
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+        }
     }
 }

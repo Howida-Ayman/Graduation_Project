@@ -152,6 +152,7 @@ class ProposalController extends Controller
                 ['team_id' => $team->id],
                 [
                     'submitted_by_user_id' => $user->id,
+                    'academic_year_id' => $academicYear->id,
                     'department_id' => $request->department_id,
                     'project_type_id' => $request->project_type_id,
                     'title' => $request->title,
@@ -192,7 +193,7 @@ class ProposalController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error submitting proposal'
+                'message' => 'Error submitting proposal'.$e->getMessage()
             ], 500);
         }
     }

@@ -4,6 +4,7 @@
 use App\Http\Controllers\Api\Requests\Supervisor\SupervisionRequestsController;
 use App\Http\Controllers\Api\Submission\SubmissionController;
 use App\Http\Controllers\Api\Supervisor\AnnouncementController;
+use App\Http\Controllers\Api\Supervisor\MilestoneManagementController;
 use App\Http\Controllers\Api\Supervisor\TeamManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +25,12 @@ Route::middleware('auth:sanctum')->group(function()
            Route::post('/announcements', [AnnouncementController::class, 'store']);
            Route::get('/my-announcements', [AnnouncementController::class, 'index']);
            Route::get('/teams_list', [AnnouncementController::class, 'TeamsList']);
+           // milestones
+           Route::prefix('/milestones')->middleware('auth:sanctum')->group(function () 
+           {
+            Route::get('/', [MilestoneManagementController::class, 'index']);
+            Route::get('/{milestoneId}/teams', [MilestoneManagementController::class, 'viewTeams']);
+           });
         });
     });
 

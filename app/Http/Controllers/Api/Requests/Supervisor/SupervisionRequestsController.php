@@ -537,7 +537,7 @@ class SupervisionRequestsController extends Controller
             DB::rollBack();
 
             return response()->json([
-                'message' => 'Something went wrong'
+                'message' => 'Something went wrong'.$th->getMessage()
             ], 500);
         }
     }

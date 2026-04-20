@@ -15,14 +15,14 @@ class MilestonesSeeder extends Seeder
                 'description' => 'Submit initial project idea',
                 'phase_number' => 1,
                 'start_date' => now()->subDays(10),
-                'deadline' => now()->addDays(5),
+                'deadline' => now()->subDays(5),
             ],
             [
                 'title' => 'Proposal Submission',
                 'description' => 'Submit full proposal document',
                 'phase_number' => 2,
-                'start_date' => now()->addDays(6),
-                'deadline' => now()->addDays(20),
+                'start_date' => now(),
+                'deadline' => now()->addDays(10),
             ],
             [
                 'title' => 'Mid Evaluation',
