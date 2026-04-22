@@ -11,6 +11,7 @@ use App\Models\SubmissionFile;
 use App\Models\Team;
 use App\Models\TeamMembership;
 use App\Models\TeamMilestonStatus;
+use App\Models\TeamSupervisor;
 use App\Models\User;
 use App\Notifications\FeedbackAddedNotification;
 use App\Notifications\GradeAddedNotification;
@@ -234,6 +235,46 @@ class SubmissionController extends Controller
                 'team_status' => $teamStatus,
             ]
         );
+     // بعد إنشاء الـ submission
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+if ($academicYear) {
+    // ✅ نجيب الـ team بشكل صحيح
+    $team = Team::find($membership->team_id);
+    
+    // جلب المشرفين على الفريق
+    $supervisors = TeamSupervisor::where('team_id', $membership->team_id)
+        ->whereNull('ended_at')
+        ->with('supervisor')
+        ->get();
+    
+    foreach ($supervisors as $supervisor) {
+        if ($supervisor->supervisor) {
+            DatabaseNotification::create([
+                'id' => (string) Str::uuid(),
+                'type' => 'submission_uploaded',
+                'notifiable_type' => 'App\\Models\\User',
+                'notifiable_id' => $supervisor->supervisor->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => 'submission_uploaded',
+                    'submission_id' => $submission->id,
+                    'milestone_id' => $milestone->id,
+                    'milestone_title' => $milestone->title,
+                    'team_id' => $membership->team_id,
+                    'team_name' => $team?->name ?? "Team {$membership->team_id}",
+                    'message' => "Team '" . ($team?->name ?? "Team {$membership->team_id}") . "' has uploaded a submission for milestone '{$milestone->title}'",
+                    'icon' => 'upload',
+                    'color' => 'green',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
+
 
         DB::commit();
 
@@ -251,8 +292,11 @@ class SubmissionController extends Controller
         DB::rollBack();
 
         return response()->json([
-            'success' => false,
-            'message' => 'Upload failed',
+           'success' => false,
+        'message' => 'Upload failed',
+        'error' => $e->getMessage(),
+        'line' => $e->getLine(),
+        'file' => $e->getFile()
         ], 500);
     }
 }

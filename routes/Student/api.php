@@ -26,6 +26,10 @@ Route::middleware('auth:sanctum')->group(function(){
 //user
 Route::get('profile',[UserController::class,'profile'])->name('profile');
 Route::put('profile',[UserController::class,'update'])->name('profile.update');
+
+// تغيير كلمة المرور (فانكشن منفصلة)
+Route::put('/profile/change-password', [UserController::class, 'changePassword']);
+
 Route::get('academic-years', [LookupController::class, 'academicYears']);
 Route::get('departments', [LookupController::class, 'departments']);
 

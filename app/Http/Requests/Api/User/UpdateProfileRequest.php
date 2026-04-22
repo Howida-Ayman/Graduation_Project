@@ -21,6 +21,7 @@ class UpdateProfileRequest extends FormRequest
             'full_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'track_name' => 'nullable|string|max:255',
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'email' => [
                 'required',
                 'email',

@@ -282,6 +282,31 @@ class SupervisionRequestsController extends Controller
                 'request_type' => 'supervision',
                 'status' => 'pending',
             ]);
+            // بعد DB::commit() وقبل return
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+if ($academicYear) {
+    \App\Models\DatabaseNotification::create([
+        'id' => (string) \Illuminate\Support\Str::uuid(),
+        'type' => 'supervision_request',
+        'notifiable_type' => 'App\\Models\\User',
+        'notifiable_id' => $request->supervisor_id,
+        'academic_year_id' => $academicYear->id,
+        'data' => [
+            'type' => 'supervision_request',
+            'request_id' => $supervisionRequest->id,
+            'team_id' => $team->id,
+            'team_name' => $team->name ?? "Team {$team->id}",
+            'project_title' => $team->graduationProject?->proposal?->title ?? 'New Project',
+            'message' => "Team '{$team->name}' has requested your supervision",
+            'icon' => 'user-plus',
+            'color' => 'blue',
+            'created_at' => now(),
+        ],
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
 
             DB::commit();
 
@@ -525,6 +550,43 @@ class SupervisionRequestsController extends Controller
                         'status' => 'rejected'
                     ]);
             }
+            // بعد update الـ request
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+if ($academicYear) {
+    $teamMembers = TeamMembership::where('team_id', $teamRequest->team_id)
+        ->where('status', 'active')
+        ->with('user')
+        ->get();
+
+    $statusText = $request->status === 'accepted' ? 'accepted' : 'rejected';
+    $icon = $request->status === 'accepted' ? 'check-circle' : 'x-circle';
+    $color = $request->status === 'accepted' ? 'green' : 'red';
+
+    foreach ($teamMembers as $member) {
+        if ($member->user) {
+            \App\Models\DatabaseNotification::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => "supervision_{$statusText}",
+                'notifiable_type' => 'App\\Models\\User',
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => "supervision_{$statusText}",
+                    'team_id' => $teamRequest->team_id,
+                    'supervisor_name' => $user->full_name,
+                    'supervisor_role' => $user->role_id == 2 ? 'doctor' : 'ta',
+                    'message' => "Your supervision request has been {$statusText} by {$user->full_name}",
+                    'icon' => $icon,
+                    'color' => $color,
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
 
             DB::commit();
 

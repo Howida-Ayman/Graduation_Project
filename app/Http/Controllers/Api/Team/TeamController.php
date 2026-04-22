@@ -129,146 +129,232 @@ class TeamController extends Controller
         }
     }
 
-    public function leave(Request $request)
-    {
-        $user = $request->user();
+public function leave(Request $request)
+{
+    $user = $request->user();
 
-        DB::beginTransaction();
+    DB::beginTransaction();
 
-        try {
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not authenticated'
-                ], 401);
-            }
+    try {
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
 
-            $academicYear = AcademicYear::where('is_active', 1)->first();
+        $academicYear = AcademicYear::where('is_active', 1)->first();
 
-            if (!$academicYear) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No active academic year found'
-                ], 404);
-            }
+        if (!$academicYear) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active academic year found'
+            ], 404);
+        }
 
-            $activeEnrollment = $user->enrollments()
-                ->where('academic_year_id', $academicYear->id)
-                ->where('status', 'active')
-                ->first();
+        $activeEnrollment = $user->enrollments()
+            ->where('academic_year_id', $academicYear->id)
+            ->where('status', 'active')
+            ->first();
 
-            if (!$activeEnrollment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You are not an active student in the current academic year'
-                ], 403);
-            }
+        if (!$activeEnrollment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not an active student in the current academic year'
+            ], 403);
+        }
 
-            $membership = TeamMembership::where('student_user_id', $user->id)
-                ->where('academic_year_id', $academicYear->id)
-                ->where('status', 'active')
-                ->whereHas('team', function ($q) use ($academicYear) {
-                    $q->where('academic_year_id', $academicYear->id);
-                })
-                ->first();
+        $membership = TeamMembership::where('student_user_id', $user->id)
+            ->where('academic_year_id', $academicYear->id)
+            ->where('status', 'active')
+            ->whereHas('team', function ($q) use ($academicYear) {
+                $q->where('academic_year_id', $academicYear->id);
+            })
+            ->first();
 
-            if (!$membership) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You are not in any team'
-                ], 404);
-            }
+        if (!$membership) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not in any team'
+            ], 404);
+        }
 
-            $team = $membership->team;
-            $isLeader = ($team->leader_user_id == $user->id);
+        $team = $membership->team;
+        $isLeader = ($team->leader_user_id == $user->id);
+        $leavingMemberName = $user->full_name;
 
-            $hasApprovedProposal = Proposal::where('team_id', $team->id)
-                ->where('status', 'approved')
-                ->exists();
+        $hasApprovedProposal = Proposal::where('team_id', $team->id)
+            ->where('status', 'approved')
+            ->exists();
 
-            if ($hasApprovedProposal) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You cannot leave the team after the proposal has been approved. Contact the admin.'
-                ], 403);
-            }
+        if ($hasApprovedProposal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot leave the team after the proposal has been approved. Contact the admin.'
+            ], 403);
+        }
 
+        // ========== التعديل هنا: منع الخروج بدلاً من إلغاء الفريق ==========
+        $activeMembersCount = TeamMembership::where('team_id', $team->id)
+            ->where('academic_year_id', $academicYear->id)
+            ->where('status', 'active')
+            ->count();
+            
+        $minTeamSize = ProjectRule::getMinTeamSize();
+
+        // إذا كان العدد الحالي يساوي أو أقل من الحد الأدنى، امنع الخروج
+        if ($activeMembersCount <= $minTeamSize) {
+            DB::rollBack(); // لا نحتاج معاملة لأننا لم نغير شيئاً، لكن للاحتياط
+            return response()->json([
+                'success' => false,
+                'message' => "You cannot leave the team. Team has {$activeMembersCount} member(s) and the minimum team size is {$minTeamSize}. Leaving would reduce the team below the minimum allowed size."
+            ], 403);
+        }
+
+
+        if ($isLeader) {
             $activeMembers = TeamMembership::where('team_id', $team->id)
                 ->where('academic_year_id', $academicYear->id)
                 ->where('status', 'active')
                 ->get();
+                
+            $newLeader = $activeMembers->where('student_user_id', '!=', $user->id)->first();
+            $newLeaderName = $newLeader->user?->full_name ?? 'Unknown';
 
-            $activeMembersCount = $activeMembers->count();
-            $minTeamSize = ProjectRule::getMinTeamSize();
-
-            // لو العدد هيقل عن الحد الأدنى، يتلغي الفريق
-            if ($activeMembersCount - 1 < $minTeamSize) {
-                DB::table('previous_projects')->where('team_id', $team->id)->delete();
-
-                Proposal::where('team_id', $team->id)->update([
-                    'status' => 'cancelled'
-                ]);
+            if ($newLeader) {
+                $team->leader_user_id = $newLeader->student_user_id;
+                $team->save();
 
                 TeamMembership::where('team_id', $team->id)
+                    ->where('student_user_id', $user->id)
                     ->where('academic_year_id', $academicYear->id)
-                    ->update([
-                        'status' => 'left',
-                        'left_at' => now()
-                    ]);
+                    ->update(['role_in_team' => 'member']);
 
-                DB::table('team_supervisors')->where('team_id', $team->id)->delete();
+                TeamMembership::where('team_id', $team->id)
+                    ->where('student_user_id', $newLeader->student_user_id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->update(['role_in_team' => 'leader']);
 
-                $team->delete();
+                // إشعار نقل القيادة
+                $teamMembers = TeamMembership::where('team_id', $team->id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where('status', 'active')
+                    ->with('user')
+                    ->get();
 
-                DB::commit();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Team disbanded successfully',
-                    'team_disbanded' => true
-                ]);
-            }
-
-            if ($isLeader) {
-                $newLeader = $activeMembers->where('student_user_id', '!=', $user->id)->first();
-
-                if ($newLeader) {
-                    $team->leader_user_id = $newLeader->student_user_id;
-                    $team->save();
-
-                    TeamMembership::where('team_id', $team->id)
-                        ->where('student_user_id', $user->id)
-                        ->where('academic_year_id', $academicYear->id)
-                        ->update(['role_in_team' => 'member']);
-
-                    TeamMembership::where('team_id', $team->id)
-                        ->where('student_user_id', $newLeader->student_user_id)
-                        ->where('academic_year_id', $academicYear->id)
-                        ->update(['role_in_team' => 'leader']);
+                foreach ($teamMembers as $member) {
+                    if ($member->user && $member->user->id != $user->id) {
+                        \App\Models\DatabaseNotification::create([
+                            'id' => (string) \Illuminate\Support\Str::uuid(),
+                            'type' => 'leadership_transferred',
+                            'notifiable_type' => 'App\\Models\\User',
+                            'notifiable_id' => $member->user->id,
+                            'academic_year_id' => $academicYear->id,
+                            'data' => [
+                                'type' => 'leadership_transferred',
+                                'team_id' => $team->id,
+                                'old_leader' => $leavingMemberName,
+                                'new_leader_id' => $newLeader->student_user_id,
+                                'new_leader_name' => $newLeaderName,
+                                'message' => "Leadership has been transferred from {$leavingMemberName} to {$newLeaderName}",
+                                'icon' => 'crown',
+                                'color' => 'yellow',
+                                'created_at' => now(),
+                            ],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
             }
-
-            $membership->status = 'left';
-            $membership->left_at = now();
-            $membership->save();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'You have left the team successfully',
-                'team_disbanded' => false
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error leaving team'
-            ], 500);
         }
-    }
 
+        // إشعارات المغادرة للأعضاء الباقيين
+        $remainingMembers = TeamMembership::where('team_id', $team->id)
+            ->where('academic_year_id', $academicYear->id)
+            ->where('status', 'active')
+            ->where('student_user_id', '!=', $user->id)
+            ->with('user')
+            ->get();
+
+        // نحتاج لحساب newLeaderName مرة أخرى إذا كان القائد هو من يغادر
+        $newLeaderNameForNotification = null;
+        if ($isLeader) {
+            $activeMembers = TeamMembership::where('team_id', $team->id)
+                ->where('academic_year_id', $academicYear->id)
+                ->where('status', 'active')
+                ->get();
+            $newLeader = $activeMembers->where('student_user_id', '!=', $user->id)->first();
+            $newLeaderNameForNotification = $newLeader->user?->full_name ?? null;
+        }
+
+        foreach ($remainingMembers as $member) {
+            if ($member->user) {
+                if ($isLeader) {
+                    \App\Models\DatabaseNotification::create([
+                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'type' => 'leader_left',
+                        'notifiable_type' => 'App\\Models\\User',
+                        'notifiable_id' => $member->user->id,
+                        'academic_year_id' => $academicYear->id,
+                        'data' => [
+                            'type' => 'leader_left',
+                            'team_id' => $team->id,
+                            'leaving_member_id' => $user->id,
+                            'leaving_member_name' => $leavingMemberName,
+                            'new_leader_name' => $newLeaderNameForNotification,
+                            'message' => "Team leader {$leavingMemberName} has left the team. {$newLeaderNameForNotification} is now the team leader",
+                            'icon' => 'crown-off',
+                            'color' => 'orange',
+                            'created_at' => now(),
+                        ],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    \App\Models\DatabaseNotification::create([
+                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'type' => 'member_left',
+                        'notifiable_type' => 'App\\Models\\User',
+                        'notifiable_id' => $member->user->id,
+                        'academic_year_id' => $academicYear->id,
+                        'data' => [
+                            'type' => 'member_left',
+                            'team_id' => $team->id,
+                            'leaving_member_id' => $user->id,
+                            'leaving_member_name' => $leavingMemberName,
+                            'message' => "{$leavingMemberName} has left the team",
+                            'icon' => 'user-minus',
+                            'color' => 'orange',
+                            'created_at' => now(),
+                        ],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        }
+
+        $membership->status = 'left';
+        $membership->left_at = now();
+        $membership->save();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You have left the team successfully',
+            'team_disbanded' => false
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error leaving team: ' . $e->getMessage() // من الأفضل عرض الخطأ أثناء التطوير
+        ], 500);
+    }
+}
 /**
  * Leave a note to team
  */

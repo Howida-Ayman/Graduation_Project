@@ -164,6 +164,41 @@ class MeetingController extends Controller
             'scheduled_at' => $scheduledAt,
             'meeting_link' => $validated['meeting_link'] ?? null,
         ]);
+        
+        // بعد إنشاء الميتينج
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+if ($academicYear) {
+    $members = \App\Models\TeamMembership::where('team_id', $team->id)
+        ->where('status', 'active')
+        ->with('user')
+        ->get();
+
+    foreach ($members as $member) {
+        if ($member->user) {
+            \App\Models\DatabaseNotification::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'new_meeting',
+                'notifiable_type' => 'App\\Models\\User',
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => 'new_meeting',
+                    'meeting_id' => $meeting->id,
+                    'team_id' => $team->id,
+                    'scheduled_at' => $meeting->scheduled_at?->format('Y-m-d H:i:s'),
+                    'meeting_link' => $meeting->meeting_link,
+                    'message' => "New meeting scheduled for your team on " . $meeting->scheduled_at?->format('F d, Y \a\t h:i A'),
+                    'icon' => 'calendar',
+                    'color' => 'blue',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
 
         log_activity(
             teamId: $team->id,
@@ -261,6 +296,41 @@ class MeetingController extends Controller
                 : $meeting->meeting_link,
         ]);
 
+        // بعد تحديث الميتينج
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+if ($academicYear) {
+    $members = \App\Models\TeamMembership::where('team_id', $meeting->team_id)
+        ->where('status', 'active')
+        ->with('user')
+        ->get();
+
+    foreach ($members as $member) {
+        if ($member->user) {
+            \App\Models\DatabaseNotification::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'meeting_updated',
+                'notifiable_type' => 'App\\Models\\User',
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => 'meeting_updated',
+                    'meeting_id' => $meeting->id,
+                    'team_id' => $meeting->team_id,
+                    'scheduled_at' => $meeting->scheduled_at?->format('Y-m-d H:i:s'),
+                    'meeting_link' => $meeting->meeting_link,
+                    'message' => "Meeting for your team has been updated. New time: " . $meeting->scheduled_at?->format('F d, Y \a\t h:i A'),
+                    'icon' => 'calendar-edit',
+                    'color' => 'yellow',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
+
         log_activity(
             teamId: $meeting->team_id,
             userId: $user->id,
@@ -331,7 +401,43 @@ class MeetingController extends Controller
             ]
         );
 
+        // قبل حذف الميتينج (جيب الأعضاء الأول)
+        $academicYear = AcademicYear::where('is_active', true)->first();
+        $members = [];
+
+        if ($academicYear) {
+            $members = \App\Models\TeamMembership::where('team_id', $meeting->team_id)
+                ->where('status', 'active')
+                ->with('user')
+                ->get();
+        }
+
         $meeting->delete();
+
+        // بعد الحذف، ابعت الإشعارات
+if ($academicYear) {
+    foreach ($members as $member) {
+        if ($member->user) {
+            \App\Models\DatabaseNotification::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'meeting_cancelled',
+                'notifiable_type' => 'App\\Models\\User',
+                'notifiable_id' => $member->user->id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
+                    'type' => 'meeting_cancelled',
+                    'team_id' => $meeting->team_id,
+                    'message' => "Meeting for your team has been cancelled",
+                    'icon' => 'calendar-cancel',
+                    'color' => 'red',
+                    'created_at' => now(),
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
 
         return response()->json([
             'message' => 'Meeting deleted successfully'

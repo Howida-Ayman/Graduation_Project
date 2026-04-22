@@ -12,6 +12,7 @@ use App\Models\TeamMembership;
 use App\Models\Milestone;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class StudentsRequestsController extends Controller
 {
@@ -388,6 +389,40 @@ class StudentsRequestsController extends Controller
                 'status' => 'pending',
             ]);
 
+            // ========== إشعار طلب جديد (للمستقبل) ==========
+            $academicYear = AcademicYear::where('is_active', true)->first();
+
+            if ($academicYear) {
+                $requestTypeText = match ($request->request_type) {
+                    'team_join' => 'team join',
+                    'team_form' => 'team formation',
+                    'team_invite' => 'team invitation',
+                    default => 'request'
+                };
+
+                \App\Models\DatabaseNotification::create([
+                    'id' => (string) Str::uuid(),
+                    'type' => 'new_request',
+                    'notifiable_type' => 'App\\Models\\User',
+                    'notifiable_id' => $request->to_user_id,
+                    'academic_year_id' => $academicYear->id,
+                    'data' => [
+                        'type' => 'new_request',
+                        'request_id' => $newRequest->id,
+                        'request_type' => $request->request_type,
+                        'from_user_id' => $user->id,
+                        'from_user_name' => $user->full_name,
+                        'team_id' => $request->team_id,
+                        'message' => "{$user->full_name} sent you a {$requestTypeText} request",
+                        'icon' => 'bell',
+                        'color' => 'blue',
+                        'created_at' => now(),
+                    ],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             DB::commit();
 
             return response()->json([
@@ -508,70 +543,226 @@ class StudentsRequestsController extends Controller
     /**
      * الرد على طلب (قبول/رفض)
      */
-    public function respondRequest(HttpRequest $request, $id)
-    {
-        $user = $request->user();
+    /**
+ * الرد على طلب (قبول/رفض)
+ */
+public function respondRequest(HttpRequest $request, $id)
+{
+    $user = $request->user();
 
-        $academicYear = AcademicYear::where('is_active', 1)->first();
+    $academicYear = AcademicYear::where('is_active', 1)->first();
 
-        if (!$academicYear) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No active academic year found'
-            ], 404);
-        }
+    if (!$academicYear) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No active academic year found'
+        ], 404);
+    }
 
-        if (!$user || !$user->is_active) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Your account is not activated'
-            ], 403);
-        }
+    if (!$user || !$user->is_active) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Your account is not activated'
+        ], 403);
+    }
 
-        $activeEnrollment = $user->enrollments()
-            ->where('academic_year_id', $academicYear->id)
-            ->where('status', 'active')
-            ->first();
+    $activeEnrollment = $user->enrollments()
+        ->where('academic_year_id', $academicYear->id)
+        ->where('status', 'active')
+        ->first();
 
-        if (!$activeEnrollment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not allowed to respond to requests in this academic year'
-            ], 403);
-        }
+    if (!$activeEnrollment) {
+        return response()->json([
+            'success' => false,
+            'message' => 'You are not allowed to respond to requests in this academic year'
+        ], 403);
+    }
 
-        $request->validate([
-            'status' => 'required|in:accepted,rejected',
+    $request->validate([
+        'status' => 'required|in:accepted,rejected',
+    ]);
+
+    $req = Request::with(['fromUser', 'toUser', 'team'])
+        ->where('id', $id)
+        ->where('academic_year_id', $academicYear->id)
+        ->where('to_user_id', $user->id)
+        ->where('status', 'pending')
+        ->first();
+
+    if (!$req) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Request not found or already processed'
+        ], 404);
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $req->update(['status' => $request->status]);
+
+        // ========== إشعار قبول/رفض طلب (للمرسل) ==========
+        $statusText = $request->status === 'accepted' ? 'accepted' : 'rejected';
+        $icon = $request->status === 'accepted' ? 'check-circle' : 'x-circle';
+        $color = $request->status === 'accepted' ? 'green' : 'red';
+
+        \App\Models\DatabaseNotification::create([
+            'id' => (string) Str::uuid(),
+            'type' => "request_{$statusText}",
+            'notifiable_type' => 'App\\Models\\User',
+            'notifiable_id' => $req->from_user_id,
+            'academic_year_id' => $academicYear->id,
+            'data' => [
+                'type' => "request_{$statusText}",
+                'request_id' => $req->id,
+                'request_type' => $req->request_type,
+                'team_id' => $req->team_id,
+                'message' => "Your request has been {$statusText} by {$user->full_name}",
+                'icon' => $icon,
+                'color' => $color,
+                'created_at' => now(),
+            ],
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        $req = Request::with(['fromUser', 'toUser', 'team'])
-            ->where('id', $id)
-            ->where('academic_year_id', $academicYear->id)
-            ->where('to_user_id', $user->id)
-            ->where('status', 'pending')
-            ->first();
+        if ($request->status === 'accepted') {
+            if ($req->request_type === 'team_join') {
+                $team = Team::withCount([
+                        'members as members_count' => function ($q) use ($academicYear) {
+                            $q->where('status', 'active')
+                              ->where('academic_year_id', $academicYear->id);
+                        }
+                    ])
+                    ->where('id', $req->team_id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->first();
 
-        if (!$req) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Request not found or already processed'
-            ], 404);
-        }
+                if (!$team) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Team not found in active academic year'
+                    ], 404);
+                }
 
-        DB::beginTransaction();
+                $alreadyMember = TeamMembership::where('team_id', $team->id)
+                    ->where('student_user_id', $req->from_user_id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where('status', 'active')
+                    ->exists();
 
-        try {
-            $req->update(['status' => $request->status]);
+                if ($alreadyMember) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User is already a member of this team'
+                    ], 400);
+                }
 
-            if ($request->status === 'accepted') {
-                if ($req->request_type === 'team_join') {
-                    $team = Team::withCount([
-                            'members as members_count' => function ($q) use ($academicYear) {
-                                $q->where('status', 'active')
-                                  ->where('academic_year_id', $academicYear->id);
-                            }
-                        ])
-                        ->where('id', $req->team_id)
+                $fromHasAnotherTeam = TeamMembership::where('student_user_id', $req->from_user_id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where('status', 'active')
+                    ->where('team_id', '!=', $team->id)
+                    ->exists();
+
+                if ($fromHasAnotherTeam) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The requesting student already belongs to another team'
+                    ], 400);
+                }
+
+                $maxTeamSize = ProjectRule::getMaxTeamSize();
+
+                if ($team->members_count >= $maxTeamSize) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Team is already full'
+                    ], 400);
+                }
+
+                TeamMembership::create([
+                    'team_id' => $req->team_id,
+                    'academic_year_id' => $team->academic_year_id,
+                    'student_user_id' => $req->from_user_id,
+                    'role_in_team' => 'member',
+                    'status' => 'active',
+                    'joined_at' => now(),
+                ]);
+
+                // ========== إشعار انضمام عضو جديد (لأعضاء الفريق) ==========
+                $newMember = $req->fromUser;
+                $existingMembers = TeamMembership::where('team_id', $team->id)
+                    ->where('student_user_id', '!=', $req->from_user_id)
+                    ->where('status', 'active')
+                    ->with('user')
+                    ->get();
+
+                foreach ($existingMembers as $member) {
+                    if ($member->user) {
+                        \App\Models\DatabaseNotification::create([
+                            'id' => (string) Str::uuid(),
+                            'type' => 'member_joined',
+                            'notifiable_type' => 'App\\Models\\User',
+                            'notifiable_id' => $member->user->id,
+                            'academic_year_id' => $academicYear->id,
+                            'data' => [
+                                'type' => 'member_joined',
+                                'team_id' => $team->id,
+                                'new_member_id' => $newMember->id,
+                                'new_member_name' => $newMember->full_name,
+                                'message' => "{$newMember->full_name} has joined your team",
+                                'icon' => 'user-plus',
+                                'color' => 'green',
+                                'created_at' => now(),
+                            ],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
+                // أي طلبات pending تخص الطالب المنضم تتقفل
+                Request::where('academic_year_id', $academicYear->id)
+                    ->where('status', 'pending')
+                    ->where(function ($q) use ($req) {
+                        $q->where('from_user_id', $req->from_user_id)
+                          ->orWhere('to_user_id', $req->from_user_id);
+                    })
+                    ->where('id', '!=', $req->id)
+                    ->update(['status' => 'rejected']);
+            }
+
+            elseif (in_array($req->request_type, ['team_form', 'team_invite'])) {
+                // الفكرة: from_user هو المحور
+                // لو عنده تيم بالفعل -> نضيف to_user لنفس التيم
+                // لو معندوش -> ننشئ تيم جديد
+
+                $fromMembership = TeamMembership::where('student_user_id', $req->from_user_id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                $toMembership = TeamMembership::where('student_user_id', $req->to_user_id)
+                    ->where('academic_year_id', $academicYear->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($toMembership) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The accepting student already belongs to a team'
+                    ], 400);
+                }
+
+                $maxTeamSize = ProjectRule::getMaxTeamSize();
+
+                if ($fromMembership) {
+                    $team = Team::where('id', $fromMembership->team_id)
                         ->where('academic_year_id', $academicYear->id)
                         ->first();
 
@@ -579,230 +770,169 @@ class StudentsRequestsController extends Controller
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => 'Team not found in active academic year'
+                            'message' => 'Leader team not found in active academic year'
                         ], 404);
                     }
 
-                    $alreadyMember = TeamMembership::where('team_id', $team->id)
-                        ->where('student_user_id', $req->from_user_id)
+                    $currentSize = TeamMembership::where('team_id', $team->id)
+                        ->where('academic_year_id', $academicYear->id)
+                        ->where('status', 'active')
+                        ->count();
+
+                    if ($currentSize >= $maxTeamSize) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Team has reached maximum size'
+                        ], 400);
+                    }
+
+                    $alreadyInSameTeam = TeamMembership::where('team_id', $team->id)
+                        ->where('student_user_id', $req->to_user_id)
                         ->where('academic_year_id', $academicYear->id)
                         ->where('status', 'active')
                         ->exists();
 
-                    if ($alreadyMember) {
+                    if ($alreadyInSameTeam) {
                         DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => 'User is already a member of this team'
-                        ], 400);
-                    }
-
-                    $fromHasAnotherTeam = TeamMembership::where('student_user_id', $req->from_user_id)
-                        ->where('academic_year_id', $academicYear->id)
-                        ->where('status', 'active')
-                        ->where('team_id', '!=', $team->id)
-                        ->exists();
-
-                    if ($fromHasAnotherTeam) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'The requesting student already belongs to another team'
-                        ], 400);
-                    }
-
-                    $maxTeamSize = ProjectRule::getMaxTeamSize();
-
-                    if ($team->members_count >= $maxTeamSize) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Team is already full'
+                            'message' => 'Student already belongs to this team'
                         ], 400);
                     }
 
                     TeamMembership::create([
-                        'team_id' => $req->team_id,
-                        'academic_year_id' => $team->academic_year_id,
-                        'student_user_id' => $req->from_user_id,
+                        'team_id' => $team->id,
+                        'academic_year_id' => $academicYear->id,
+                        'student_user_id' => $req->to_user_id,
                         'role_in_team' => 'member',
                         'status' => 'active',
                         'joined_at' => now(),
                     ]);
 
-                    // أي طلبات pending تخص الطالب المنضم تتقفل
-                    Request::where('academic_year_id', $academicYear->id)
-                        ->where('status', 'pending')
-                        ->where(function ($q) use ($req) {
-                            $q->where('from_user_id', $req->from_user_id)
-                              ->orWhere('to_user_id', $req->from_user_id);
-                        })
-                        ->where('id', '!=', $req->id)
-                        ->update(['status' => 'rejected']);
-                }
-
-                elseif (in_array($req->request_type, ['team_form', 'team_invite'])) {
-                    // الفكرة: from_user هو المحور
-                    // لو عنده تيم بالفعل -> نضيف to_user لنفس التيم
-                    // لو معندوش -> ننشئ تيم جديد
-
-                    $fromMembership = TeamMembership::where('student_user_id', $req->from_user_id)
-                        ->where('academic_year_id', $academicYear->id)
+                    // ========== إشعار انضمام عضو جديد (لأعضاء الفريق) ==========
+                    $newMember = $req->toUser;
+                    $existingMembers = TeamMembership::where('team_id', $team->id)
+                        ->where('student_user_id', '!=', $req->to_user_id)
                         ->where('status', 'active')
-                        ->first();
+                        ->with('user')
+                        ->get();
 
-                    $toMembership = TeamMembership::where('student_user_id', $req->to_user_id)
-                        ->where('academic_year_id', $academicYear->id)
-                        ->where('status', 'active')
-                        ->first();
-
-                    if ($toMembership) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'The accepting student already belongs to a team'
-                        ], 400);
-                    }
-
-                    $maxTeamSize = ProjectRule::getMaxTeamSize();
-
-                    if ($fromMembership) {
-                        $team = Team::where('id', $fromMembership->team_id)
-                            ->where('academic_year_id', $academicYear->id)
-                            ->first();
-
-                        if (!$team) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Leader team not found in active academic year'
-                            ], 404);
-                        }
-
-                        $currentSize = TeamMembership::where('team_id', $team->id)
-                            ->where('academic_year_id', $academicYear->id)
-                            ->where('status', 'active')
-                            ->count();
-
-                        if ($currentSize >= $maxTeamSize) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Team has reached maximum size'
-                            ], 400);
-                        }
-
-                        $alreadyInSameTeam = TeamMembership::where('team_id', $team->id)
-                            ->where('student_user_id', $req->to_user_id)
-                            ->where('academic_year_id', $academicYear->id)
-                            ->where('status', 'active')
-                            ->exists();
-
-                        if ($alreadyInSameTeam) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Student already belongs to this team'
-                            ], 400);
-                        }
-
-                        TeamMembership::create([
-                            'team_id' => $team->id,
-                            'academic_year_id' => $academicYear->id,
-                            'student_user_id' => $req->to_user_id,
-                            'role_in_team' => 'member',
-                            'status' => 'active',
-                            'joined_at' => now(),
-                        ]);
-
-                        if (is_null($req->team_id)) {
-                            $req->update(['team_id' => $team->id]);
-                        }
-                    } else {
-                        // أول قبول -> ننشئ تيم جديد
-                        $fromUserDept = DB::table('student_profiles')
-                            ->where('user_id', $req->from_user_id)
-                            ->value('department_id');
-
-                        $toUserDept = DB::table('student_profiles')
-                            ->where('user_id', $req->to_user_id)
-                            ->value('department_id');
-
-                        $departmentId = ($fromUserDept == $toUserDept && $fromUserDept) ? $fromUserDept : 1;
-
-                        $team = Team::create([
-                            'academic_year_id' => $academicYear->id,
-                            'department_id' => $departmentId,
-                            'leader_user_id' => $req->from_user_id,
-                        ]);
-
-                        $req->update(['team_id' => $team->id]);
-
-                        $milestones = Milestone::where('is_active', true)->get();
-
-                        foreach ($milestones as $milestone) {
-                            DB::table('team_milestone_status')->updateOrInsert(
-                                [
+                    foreach ($existingMembers as $member) {
+                        if ($member->user) {
+                            \App\Models\DatabaseNotification::create([
+                                'id' => (string) Str::uuid(),
+                                'type' => 'member_joined',
+                                'notifiable_type' => 'App\\Models\\User',
+                                'notifiable_id' => $member->user->id,
+                                'academic_year_id' => $academicYear->id,
+                                'data' => [
+                                    'type' => 'member_joined',
                                     'team_id' => $team->id,
-                                    'milestone_id' => $milestone->id,
-                                ],
-                                [
-                                    'status' => 'pending_submission',
+                                    'new_member_id' => $newMember->id,
+                                    'new_member_name' => $newMember->full_name,
+                                    'message' => "{$newMember->full_name} has joined your team",
+                                    'icon' => 'user-plus',
+                                    'color' => 'green',
                                     'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]
-                            );
+                                ],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
                         }
-
-                        TeamMembership::create([
-                            'team_id' => $team->id,
-                            'academic_year_id' => $academicYear->id,
-                            'student_user_id' => $req->from_user_id,
-                            'role_in_team' => 'leader',
-                            'status' => 'active',
-                            'joined_at' => now(),
-                        ]);
-
-                        TeamMembership::create([
-                            'team_id' => $team->id,
-                            'academic_year_id' => $academicYear->id,
-                            'student_user_id' => $req->to_user_id,
-                            'role_in_team' => 'member',
-                            'status' => 'active',
-                            'joined_at' => now(),
-                        ]);
                     }
 
-                    // أي طلبات pending تخص الطالب اللي قبل تتقفل
-                    Request::where('academic_year_id', $academicYear->id)
-                        ->where('status', 'pending')
-                        ->where(function ($q) use ($req) {
-                            $q->where('from_user_id', $req->to_user_id)
-                              ->orWhere('to_user_id', $req->to_user_id);
-                        })
-                        ->where('id', '!=', $req->id)
-                        ->update(['status' => 'rejected']);
+                    if (is_null($req->team_id)) {
+                        $req->update(['team_id' => $team->id]);
+                    }
+                } else {
+                    // أول قبول -> ننشئ تيم جديد
+                    $fromUserDept = DB::table('student_profiles')
+                        ->where('user_id', $req->from_user_id)
+                        ->value('department_id');
+
+                    $toUserDept = DB::table('student_profiles')
+                        ->where('user_id', $req->to_user_id)
+                        ->value('department_id');
+
+                    $departmentId = ($fromUserDept == $toUserDept && $fromUserDept) ? $fromUserDept : 1;
+
+                    $team = Team::create([
+                        'academic_year_id' => $academicYear->id,
+                        'department_id' => $departmentId,
+                        'leader_user_id' => $req->from_user_id,
+                    ]);
+
+                    $req->update(['team_id' => $team->id]);
+
+                    $milestones = Milestone::where('is_active', true)->get();
+
+                    foreach ($milestones as $milestone) {
+                        DB::table('team_milestone_status')->updateOrInsert(
+                            [
+                                'team_id' => $team->id,
+                                'milestone_id' => $milestone->id,
+                            ],
+                            [
+                                'status' => 'pending_submission',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]
+                        );
+                    }
+
+                    TeamMembership::create([
+                        'team_id' => $team->id,
+                        'academic_year_id' => $academicYear->id,
+                        'student_user_id' => $req->from_user_id,
+                        'role_in_team' => 'leader',
+                        'status' => 'active',
+                        'joined_at' => now(),
+                    ]);
+
+                    TeamMembership::create([
+                        'team_id' => $team->id,
+                        'academic_year_id' => $academicYear->id,
+                        'student_user_id' => $req->to_user_id,
+                        'role_in_team' => 'member',
+                        'status' => 'active',
+                        'joined_at' => now(),
+                    ]);
+
+                    // لا نحتاج member_joined هنا لأن الفريق لسه جديد ومفيش أعضاء تانيين
                 }
+
+                // أي طلبات pending تخص الطالب اللي قبل تتقفل
+                Request::where('academic_year_id', $academicYear->id)
+                    ->where('status', 'pending')
+                    ->where(function ($q) use ($req) {
+                        $q->where('from_user_id', $req->to_user_id)
+                          ->orWhere('to_user_id', $req->to_user_id);
+                    })
+                    ->where('id', '!=', $req->id)
+                    ->update(['status' => 'rejected']);
             }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Request ' . $request->status . ' successfully',
-                'data' => [
-                    'request_id' => $req->id,
-                    'status' => $request->status,
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to process request',
-            ], 500);
         }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Request ' . $request->status . ' successfully',
+            'data' => [
+                'request_id' => $req->id,
+                'status' => $request->status,
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to process request',
+        ], 500);
     }
+}
+
 }

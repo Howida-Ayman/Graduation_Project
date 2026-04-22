@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\Milestone;
 use App\Models\SupervisorMilestoneNote;
 use App\Models\Team;
+use App\Models\TeamMembership;
 use Illuminate\Http\Request;
 
 class SupervisorMilestoneNoteController extends Controller
@@ -70,6 +71,51 @@ class SupervisorMilestoneNoteController extends Controller
                 'note' => $request->note,
             ]
         );
+
+        // بعد updateOrCreate
+$academicYear = AcademicYear::where('is_active', true)->first();
+
+if ($academicYear) {
+    // جلب كل الفرق اللي الدكتور بيشرف عليها في السنة دي
+    $teams = Team::where('academic_year_id', $academicYear->id)
+        ->whereHas('currentSupervisors', function ($q) use ($user) {
+            $q->where('users.id', $user->id)
+              ->where('team_supervisors.supervisor_role', 'doctor');
+        })
+        ->get();
+
+    foreach ($teams as $team) {
+        $members = TeamMembership::where('team_id', $team->id)
+            ->where('status', 'active')
+            ->with('user')
+            ->get();
+
+        foreach ($members as $member) {
+            if ($member->user) {
+                \App\Models\DatabaseNotification::create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'type' => 'doctor_milestone_note',
+                    'notifiable_type' => 'App\\Models\\User',
+                    'notifiable_id' => $member->user->id,
+                    'academic_year_id' => $academicYear->id,
+                    'data' => [
+                        'type' => 'doctor_milestone_note',
+                        'milestone_id' => $milestone->id,
+                        'milestone_title' => $milestone->title,
+                        'doctor_name' => $user->full_name,
+                        'note' => $request->note,
+                        'message' => "Dr. {$user->full_name} added a note on milestone '{$milestone->title}'",
+                        'icon' => 'clipboard',
+                        'color' => 'purple',
+                        'created_at' => now(),
+                    ],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+    }
+}
 
         return response()->json([
             'message' => 'Milestone note saved successfully',
