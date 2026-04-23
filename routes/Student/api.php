@@ -25,7 +25,7 @@ Route::get('/user', function (Request $request) {
 Route::middleware('auth:sanctum')->group(function(){
 //user
 Route::get('profile',[UserController::class,'profile'])->name('profile');
-Route::put('profile',[UserController::class,'update'])->name('profile.update');
+Route::post('profile',[UserController::class,'update'])->name('profile.update');
 
 // تغيير كلمة المرور (فانكشن منفصلة)
 Route::put('/profile/change-password', [UserController::class, 'changePassword']);

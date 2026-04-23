@@ -15,13 +15,13 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         $user = $this->user();
-        $roleCode = $user?->role?->code;
+        $roleCode = strtolower($user?->role?->code);
 
         $rules = [
             'full_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'track_name' => 'nullable|string|max:255',
-            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profile_image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'email' => [
                 'required',
                 'email',

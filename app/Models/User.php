@@ -13,6 +13,7 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $appends = ['profile_image_full_url'];
     /**
      * The attributes that are mass assignable.
      *
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'full_name',
         'email',
         'phone',
+        'profile_image_url',
         'track_name',
         'created_at',
         'updated_at'
@@ -53,13 +55,20 @@ class User extends Authenticatable
         ];
     }
 
+    
+
+public function getProfileImageFullUrlAttribute()
+{
+    return $this->profile_image_url ? asset($this->profile_image_url) : null;
+}
+
     public function staffprofile()
     {
         return $this->hasOne(StaffProfile::class);
     }
-    public function studentprofile()
+    public function studentProfile()
     {
-        return $this->hasOne(StudentProfile::class);
+        return $this->hasOne(StudentProfile::class, 'user_id', 'id');
     }
 
 public function role()

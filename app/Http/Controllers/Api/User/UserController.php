@@ -27,7 +27,7 @@ class UserController extends Controller
     ], 200);
 }
 
- public function update(UpdateProfileRequest $request)
+public function update(UpdateProfileRequest $request)
 {
     $user = $request->user();
 
@@ -43,26 +43,35 @@ class UserController extends Controller
         ];
 
         // ✅ تحديث الصورة الشخصية (إن وجدت)
-        if ($request->hasFile('profile_image')) {
-            // حذف الصورة القديمة لو موجودة
-            if ($user->profile_image_url && file_exists(public_path($user->profile_image_url))) {
-                unlink(public_path($user->profile_image_url));
-            }
-
-            // حفظ الصورة الجديدة
-            $file = $request->file('profile_image');
-            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/profiles'), $fileName);
+        if ($request->hasFile('profile_image_url')) {
+            $file = $request->file('profile_image_url');
             
-            // تحديث مسار الصورة في قاعدة البيانات (باستخدام profile_image_url)
-            $updateData['profile_image_url'] = 'uploads/profiles/' . $fileName;
+            if ($file->isValid()) {
+                // حذف الصورة القديمة لو موجودة
+                if ($user->profile_image_url && file_exists(public_path($user->profile_image_url))) {
+                    unlink(public_path($user->profile_image_url));
+                }
+
+                // حفظ الصورة الجديدة
+                $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/profiles'), $fileName);
+                
+                $imagePath = 'uploads/profiles/' . $fileName;
+                $updateData['profile_image_url'] = $imagePath;
+                
+            }
         }
 
+        
         // تحديث جدول users
         $user->update($updateData);
+        
+        // تأكدي إنها اتحفظت
+        $user->refresh();
 
+        $roleCode = strtolower($user->role?->code);
         // لو Student
-        if ($user->role?->code === 'student') {
+        if ($roleCode === 'student') {
             $user->studentProfile()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -73,7 +82,7 @@ class UserController extends Controller
         }
 
         // لو Doctor أو TA
-        if (in_array($user->role?->code, ['doctor', 'TA', 'ta'])) {
+        if (in_array($roleCode, ['doctor', 'ta'])) {
             $user->staffprofile()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -84,17 +93,21 @@ class UserController extends Controller
 
         DB::commit();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Profile updated successfully',
-            'data' => [
-                'user' => $user->fresh(),
-                'profile_image_url' => $user->profile_image_url ? asset($user->profile_image_url) : null
-            ]
-        ], 200);
+  return response()->json([
+    'status' => true,
+    'message' => 'Profile updated successfully',
+    'data' => new ProfileResource(
+        $user->fresh()->load([
+            'role',
+            'studentProfile.department',
+            'staffprofile.department',
+        ])
+    )
+], 200);
 
     } catch (\Exception $e) {
         DB::rollBack();
+
 
         return response()->json([
             'status' => false,
