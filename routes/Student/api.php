@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
 use App\Http\Controllers\Api\Proposal\ProposalController;
 use App\Http\Controllers\Api\Proposal\ProposalFormController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
 use App\Http\Controllers\Api\Team\TeamController;
 use App\Http\Controllers\Api\Submission\SubmissionController;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Requests\Students\StudentsRequestsController;
 use App\Http\Controllers\Api\Requests\Supervisor\SupervisionRequestsController;
+use App\Http\Controllers\Api\TermsController;
 use App\Http\Controllers\Api\TimeLine\TimelineController;
 
 Route::get('/user', function (Request $request) {
@@ -78,6 +80,19 @@ Route::get('/my-timeline/{id}', [TimelineController::class, 'show']);
 
 // Route::get('/timeline', [TimelineController::class, 'index']);
 // Route::get('/timeline/{id}', [TimelineController::class, 'show']);
+
+
+
+    // Reports
+    Route::prefix('reports')->group(function () {
+    Route::post('/', [ReportController::class, 'store']);           // Submit report
+    Route::get('/my-reports', [ReportController::class, 'myReports']); // Get user's reports
+    });
+    
+ 
 });
+
+
+
 
 

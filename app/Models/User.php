@@ -55,7 +55,15 @@ class User extends Authenticatable
         ];
     }
 
-    
+
+
+ // app/Models/User.php - أضيفي هذه العلاقات
+
+public function reports()
+{
+    return $this->hasMany(Report::class);
+}
+  
 
 public function getProfileImageFullUrlAttribute()
 {
