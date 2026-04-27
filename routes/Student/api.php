@@ -1,6 +1,6 @@
 <?php
 
-
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\User\LookupController;
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\Library\LibraryController;
@@ -88,6 +88,17 @@ Route::get('/my-timeline/{id}', [TimelineController::class, 'show']);
     Route::post('/', [ReportController::class, 'store']);           // Submit report
     Route::get('/my-reports', [ReportController::class, 'myReports']); // Get user's reports
     });
+
+
+
+    //chat
+    Route::prefix('chat')->group(function () {
+        Route::get('/team', [ChatController::class, 'getTeamConversation']);
+        Route::get('/conversations/{conversation}/messages', [ChatController::class, 'getMessages']);
+        Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
+        Route::put('/conversations/{conversation}/read', [ChatController::class, 'markAsRead']);
+    });
+    
     
  
 });

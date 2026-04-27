@@ -228,5 +228,49 @@ public function notifications()
 }
 
 
+// app/Models/User.php - أضيفي هذه العلاقات
+
+// المحادثات اللي المستخدم مشارك فيها
+public function conversations()
+{
+    return $this->belongsToMany(Conversation::class, 'conversation_participants', 'user_id', 'conversation_id')
+        ->withPivot('role', 'joined_at', 'left_at')
+        ->wherePivot('left_at', null)
+        ->withTimestamps();
+}
+
+// الرسائل اللي المستخدم أرسلها
+public function messages()
+{
+    return $this->hasMany(Message::class, 'sender_user_id');
+}
+
+// الرسائل المقروءة
+public function readMessages()
+{
+    return $this->hasMany(MessageRead::class);
+}
+
+// طريقة جلب كل المشاركين في شات الفريق (الدكتور، المعيد، الطلاب)
+public function getTeamChatParticipants($teamId)
+{
+    $team = Team::find($teamId);
+    
+    $participants = collect();
+    
+    // 1. أعضاء الفريق من الطلاب
+    $students = $team->members()->where('status', 'active')->get();
+    $participants = $participants->merge($students);
+    
+    // 2. المشرفين (دكتور ومعيد)
+    $supervisors = $team->supervisors()->with('user')->get();
+    foreach ($supervisors as $supervisor) {
+        $participants->push($supervisor->user);
+    }
+    
+    return $participants->unique('id');
+}
+
+
 }
 

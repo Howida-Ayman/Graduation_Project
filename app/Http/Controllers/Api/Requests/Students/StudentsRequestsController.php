@@ -19,9 +19,9 @@ class StudentsRequestsController extends Controller
     /**
      * الفرق المتاحة للانضمام
      */
-    public function availableTeams()
+    public function availableTeams(HttpRequest $request)
     {
-        $user = request()->user();
+        $user = $request->user();
 
         $academicYear = AcademicYear::where('is_active', 1)->first();
 
@@ -52,6 +52,7 @@ class StudentsRequestsController extends Controller
         }
 
         $maxTeamSize = ProjectRule::getMaxTeamSize();
+        $perPage = $request->per_page ?? 10;
 
         $teams = Team::with([
                 'department',
@@ -67,7 +68,7 @@ class StudentsRequestsController extends Controller
             ])
             ->where('academic_year_id', $academicYear->id)
             ->having('members_count', '<', $maxTeamSize)
-            ->get(['id', 'leader_user_id', 'department_id']);
+            ->paginate($perPage, ['id', 'leader_user_id', 'department_id']);
 
         $sentTeamRequests = Request::where('from_user_id', $user->id)
             ->where('academic_year_id', $academicYear->id)
@@ -76,30 +77,32 @@ class StudentsRequestsController extends Controller
             ->pluck('team_id')
             ->toArray();
 
+        $teams->getCollection()->transform(function ($team) use ($sentTeamRequests, $maxTeamSize) {
+            return [
+                'id' => $team->id,
+                'leader_name' => $team->leader?->full_name,
+                'leader_image' => $team->leader?->profile_image_url,
+                'current_members' => $team->members_count,
+                'max_members' => $maxTeamSize,
+                'has_slot' => $team->members_count < $maxTeamSize,
+                'can_request' => !in_array($team->id, $sentTeamRequests),
+                'members' => $team->members
+                    ->where('status', 'active')
+                    ->filter(fn($member) => $member->user)
+                    ->map(function ($member) {
+                        return [
+                            'id' => $member->student_user_id,
+                            'name' => $member->user?->full_name,
+                            'track' => $member->user?->track_name,
+                            'profile_image' => $member->user?->profile_image_url,
+                        ];
+                    })->values(),
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $teams->map(function ($team) use ($sentTeamRequests, $maxTeamSize) {
-                return [
-                    'id' => $team->id,
-                    'leader_name' => $team->leader?->full_name,
-                    'leader_image' => $team->leader?->profile_image_url,
-                    'current_members' => $team->members_count,
-                    'max_members' => $maxTeamSize,
-                    'has_slot' => $team->members_count < $maxTeamSize,
-                    'can_request' => !in_array($team->id, $sentTeamRequests),
-                    'members' => $team->members
-                        ->where('status', 'active')
-                        ->filter(fn($member) => $member->user)
-                        ->map(function ($member) {
-                            return [
-                                'id' => $member->student_user_id,
-                                'name' => $member->user?->full_name,
-                                'track' => $member->user?->track_name,
-                                'profile_image' => $member->user?->profile_image_url,
-                            ];
-                        })->values(),
-                ];
-            })
+            'data' => $teams
         ]);
     }
 
@@ -144,39 +147,43 @@ class StudentsRequestsController extends Controller
             ->pluck('to_user_id')
             ->toArray();
 
+        $perPage = $request->per_page ?? 10;
+
         $query = User::where('role_id', 4)
             ->where('is_active', 1)
             ->where('id', '!=', $user->id)
             ->whereHas('enrollments', function ($q) use ($academicYear) {
                 $q->where('academic_year_id', $academicYear->id)
-                  ->where('status', 'active');
+                    ->where('status', 'active');
             })
             ->whereDoesntHave('teamMemberships', function ($q) use ($academicYear) {
                 $q->where('status', 'active')
-                  ->where('academic_year_id', $academicYear->id);
+                    ->where('academic_year_id', $academicYear->id);
             });
 
         if ($request->search) {
             $search = '%' . $request->search . '%';
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', $search)
-                  ->orWhere('track_name', 'like', $search);
+                    ->orWhere('track_name', 'like', $search);
             });
         }
 
-        $students = $query->get(['id', 'full_name', 'track_name', 'profile_image_url']);
+        $students = $query->paginate($perPage, ['id', 'full_name', 'track_name', 'profile_image_url']);
+
+        $students->getCollection()->transform(function ($student) use ($sentRequests) {
+            return [
+                'id' => $student->id,
+                'name' => $student->full_name,
+                'track' => $student->track_name,
+                'profile_image' => $student->profile_image_url,
+                'can_request' => !in_array($student->id, $sentRequests),
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $students->map(function ($student) use ($sentRequests) {
-                return [
-                    'id' => $student->id,
-                    'name' => $student->full_name,
-                    'track' => $student->track_name,
-                    'profile_image' => $student->profile_image_url,
-                    'can_request' => !in_array($student->id, $sentRequests),
-                ];
-            })
+            'data' => $students
         ]);
     }
 
@@ -241,7 +248,7 @@ class StudentsRequestsController extends Controller
             ->where('is_active', 1)
             ->whereHas('enrollments', function ($q) use ($academicYear) {
                 $q->where('academic_year_id', $academicYear->id)
-                  ->where('status', 'active');
+                    ->where('status', 'active');
             })
             ->first();
 
@@ -295,7 +302,7 @@ class StudentsRequestsController extends Controller
             $team = Team::withCount([
                     'members as members_count' => function ($q) use ($academicYear) {
                         $q->where('status', 'active')
-                          ->where('academic_year_id', $academicYear->id);
+                            ->where('academic_year_id', $academicYear->id);
                     }
                 ])
                 ->where('id', $request->team_id)
@@ -319,7 +326,6 @@ class StudentsRequestsController extends Controller
             }
         }
 
-        // team_form: المرسل ممكن يبقى خارج تيم أو ليدر في تيم قائم
         if ($request->request_type === 'team_form') {
             if ($hasTeam && !$isLeader) {
                 return response()->json([
@@ -340,7 +346,6 @@ class StudentsRequestsController extends Controller
                 ], 400);
             }
 
-            // لو المرسل بالفعل في تيم، لازم يبقى نفس تيمه هي اللي هتكبر
             if ($hasTeam) {
                 $maxTeamSize = ProjectRule::getMaxTeamSize();
 
@@ -389,39 +394,27 @@ class StudentsRequestsController extends Controller
                 'status' => 'pending',
             ]);
 
-            // ========== إشعار طلب جديد (للمستقبل) ==========
-            $academicYear = AcademicYear::where('is_active', true)->first();
-
-            if ($academicYear) {
-                $requestTypeText = match ($request->request_type) {
-                    'team_join' => 'team join',
-                    'team_form' => 'team formation',
-                    'team_invite' => 'team invitation',
-                    default => 'request'
-                };
-
-                \App\Models\DatabaseNotification::create([
-                    'id' => (string) Str::uuid(),
+            \App\Models\DatabaseNotification::create([
+                'id' => (string) Str::uuid(),
+                'type' => 'new_request',
+                'notifiable_type' => 'App\\Models\\User',
+                'notifiable_id' => $request->to_user_id,
+                'academic_year_id' => $academicYear->id,
+                'data' => [
                     'type' => 'new_request',
-                    'notifiable_type' => 'App\\Models\\User',
-                    'notifiable_id' => $request->to_user_id,
-                    'academic_year_id' => $academicYear->id,
-                    'data' => [
-                        'type' => 'new_request',
-                        'request_id' => $newRequest->id,
-                        'request_type' => $request->request_type,
-                        'from_user_id' => $user->id,
-                        'from_user_name' => $user->full_name,
-                        'team_id' => $request->team_id,
-                        'message' => "{$user->full_name} sent you a {$requestTypeText} request",
-                        'icon' => 'bell',
-                        'color' => 'blue',
-                        'created_at' => now(),
-                    ],
+                    'request_id' => $newRequest->id,
+                    'request_type' => $request->request_type,
+                    'from_user_id' => $user->id,
+                    'from_user_name' => $user->full_name,
+                    'team_id' => $request->team_id,
+                    'message' => "{$user->full_name} sent you a request",
+                    'icon' => 'bell',
+                    'color' => 'blue',
                     'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+                ],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             DB::commit();
 
@@ -460,6 +453,8 @@ class StudentsRequestsController extends Controller
             ], 404);
         }
 
+        $perPage = $request->per_page ?? 10;
+
         $query = Request::with(['fromUser', 'team'])
             ->where('to_user_id', $user->id)
             ->where('academic_year_id', $academicYear->id)
@@ -471,27 +466,29 @@ class StudentsRequestsController extends Controller
             $query->whereNull('team_id');
         }
 
-        $requests = $query->orderBy('created_at', 'desc')->get();
+        $requests = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        $requests->getCollection()->transform(function ($req) {
+            return [
+                'id' => $req->id,
+                'from_user' => [
+                    'id' => $req->fromUser->id,
+                    'name' => $req->fromUser->full_name,
+                    'track' => $req->fromUser->track_name,
+                    'profile_image' => $req->fromUser->profile_image_url,
+                ],
+                'request_type' => $req->request_type,
+                'team' => $req->team ? [
+                    'id' => $req->team->id,
+                    'name' => $req->team->name ?? 'Team',
+                ] : null,
+                'created_at' => $req->created_at,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $requests->map(function ($req) {
-                return [
-                    'id' => $req->id,
-                    'from_user' => [
-                        'id' => $req->fromUser->id,
-                        'name' => $req->fromUser->full_name,
-                        'track' => $req->fromUser->track_name,
-                        'profile_image' => $req->fromUser->profile_image_url,
-                    ],
-                    'request_type' => $req->request_type,
-                    'team' => $req->team ? [
-                        'id' => $req->team->id,
-                        'name' => $req->team->name ?? 'Team',
-                    ] : null,
-                    'created_at' => $req->created_at,
-                ];
-            })
+            'data' => $requests
         ]);
     }
 
@@ -511,38 +508,38 @@ class StudentsRequestsController extends Controller
             ], 404);
         }
 
+        $perPage = $request->per_page ?? 10;
+
         $requests = Request::with(['toUser', 'team'])
             ->where('from_user_id', $user->id)
             ->where('academic_year_id', $academicYear->id)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($perPage);
+
+        $requests->getCollection()->transform(function ($req) {
+            return [
+                'id' => $req->id,
+                'to_user' => [
+                    'id' => $req->toUser->id,
+                    'name' => $req->toUser->full_name,
+                    'track' => $req->toUser->track_name,
+                    'profile_image' => $req->toUser->profile_image_url,
+                ],
+                'request_type' => $req->request_type,
+                'team' => $req->team ? [
+                    'id' => $req->team->id,
+                    'name' => $req->team->name ?? 'Team',
+                ] : null,
+                'status' => $req->status,
+                'created_at' => $req->created_at,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $requests->map(function ($req) {
-                return [
-                    'id' => $req->id,
-                    'to_user' => [
-                        'id' => $req->toUser->id,
-                        'name' => $req->toUser->full_name,
-                        'track' => $req->toUser->track_name,
-                        'profile_image' => $req->toUser->profile_image_url,
-                    ],
-                    'request_type' => $req->request_type,
-                    'team' => $req->team ? [
-                        'id' => $req->team->id,
-                        'name' => $req->team->name ?? 'Team',
-                    ] : null,
-                    'status' => $req->status,
-                    'created_at' => $req->created_at,
-                ];
-            })
+            'data' => $requests
         ]);
     }
-
-    /**
-     * الرد على طلب (قبول/رفض)
-     */
     /**
  * الرد على طلب (قبول/رفض)
  */
