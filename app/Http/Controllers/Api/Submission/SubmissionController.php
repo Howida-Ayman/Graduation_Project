@@ -356,7 +356,7 @@ foreach ($members as $member) {
     public function addGrade(Request $request, $teamId, $milestoneId)
     {
         $request->validate([
-            'grade' => 'required|decimal:2',
+            'grade' => 'required|numeric',
         ]);
 
         $user = $request->user();

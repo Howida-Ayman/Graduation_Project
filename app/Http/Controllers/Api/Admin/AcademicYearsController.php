@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AcademicYearRequest;
 use App\Models\AcademicYear;
+use App\Models\StudentEnrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -29,11 +30,37 @@ class AcademicYearsController extends Controller
     {  
         $year=DB::transaction(function() use ($request)
         {
-        
-        // 2. بعد كده نضيف السنة الجديدة كنشطة
-            $year=AcademicYear::create([
-                'code'=>$request->code,
-            ]);
+            $previousActiveYear = AcademicYear::where('is_active', true)->first();
+
+// اقفل أي سنة حالية
+AcademicYear::where('is_active', true)->update([
+    'is_active' => false
+]);
+
+// فعّل/أنشئ السنة الجديدة
+$year = AcademicYear::create([
+    'code' => $request->code,
+    'is_active' => true,
+]);
+
+// لو كان فيه سنة قديمة فعالة، هات الطلبة الساقطين منها
+if ($previousActiveYear) {
+    $failedStudents = StudentEnrollment::where('academic_year_id', $previousActiveYear->id)
+        ->where('status', 'failed')
+        ->get();
+
+    foreach ($failedStudents as $enrollment) {
+        StudentEnrollment::updateOrCreate(
+            [
+                'student_user_id' => $enrollment->student_user_id,
+                'academic_year_id' => $year->id,
+            ],
+            [
+                'status' => 'active'
+            ]
+        );
+    }
+}
             return $year;
             });
             return response()->json(
