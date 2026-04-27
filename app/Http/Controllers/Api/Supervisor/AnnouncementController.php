@@ -121,6 +121,37 @@ class AnnouncementController extends Controller
                 'message' => $validated['message'],
             ]);
 
+             $members = \App\Models\TeamMembership::where('team_id', $team->id)
+            ->where('status', 'active')
+            ->with('user')
+            ->get();
+
+        foreach ($members as $member) {
+            if ($member->user) {
+                \App\Models\DatabaseNotification::create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'type' => 'new_announcement',
+                    'notifiable_type' => 'App\\Models\\User',
+                    'notifiable_id' => $member->user->id,
+                    'academic_year_id' => $academicYear->id,
+                    'data' => [
+                        'type' => 'new_announcement',
+                        'announcement_id' => $announcement->id,
+                        'team_id' => $team->id,
+                        'message' => $validated['message'],
+                        'title' => 'New Announcement',
+                        'icon' => 'megaphone',
+                        'color' => 'blue',
+                        'created_at' => now(),
+                    ],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+
+
             log_activity(
                 teamId: $team->id,
                 userId: $user->id,
@@ -168,6 +199,37 @@ class AnnouncementController extends Controller
         }
 
         Announcement::insert($rows);
+
+         // ========== إشعارات الإعلان لجميع أعضاء الفرق ==========
+    foreach ($teams as $team) {
+        $members = \App\Models\TeamMembership::where('team_id', $team->id)
+            ->where('status', 'active')
+            ->with('user')
+            ->get();
+
+        foreach ($members as $member) {
+            if ($member->user) {
+                \App\Models\DatabaseNotification::create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'type' => 'new_announcement',
+                    'notifiable_type' => 'App\\Models\\User',
+                    'notifiable_id' => $member->user->id,
+                    'academic_year_id' => $academicYear->id,
+                    'data' => [
+                        'type' => 'new_announcement',
+                        'team_id' => $team->id,
+                        'message' => $validated['message'],
+                        'title' => 'New Announcement',
+                        'icon' => 'megaphone',
+                        'color' => 'blue',
+                        'created_at' => now(),
+                    ],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+    }
 
         foreach ($teams as $team) {
             log_activity(

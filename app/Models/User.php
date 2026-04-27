@@ -13,6 +13,7 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $appends = ['profile_image_full_url'];
     /**
      * The attributes that are mass assignable.
      *
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'full_name',
         'email',
         'phone',
+        'profile_image_url',
         'track_name',
         'created_at',
         'updated_at'
@@ -53,13 +55,28 @@ class User extends Authenticatable
         ];
     }
 
+
+
+ // app/Models/User.php - أضيفي هذه العلاقات
+
+public function reports()
+{
+    return $this->hasMany(Report::class);
+}
+  
+
+public function getProfileImageFullUrlAttribute()
+{
+    return $this->profile_image_url ? asset($this->profile_image_url) : null;
+}
+
     public function staffprofile()
     {
         return $this->hasOne(StaffProfile::class);
     }
-    public function studentprofile()
+    public function studentProfile()
     {
-        return $this->hasOne(StudentProfile::class);
+        return $this->hasOne(StudentProfile::class, 'user_id', 'id');
     }
 
 public function role()
@@ -208,6 +225,50 @@ public function notifications()
 {
     return $this->hasMany(DatabaseNotification::class, 'notifiable_id')
         ->where('notifiable_type', User::class);
+}
+
+
+// app/Models/User.php - أضيفي هذه العلاقات
+
+// المحادثات اللي المستخدم مشارك فيها
+public function conversations()
+{
+    return $this->belongsToMany(Conversation::class, 'conversation_participants', 'user_id', 'conversation_id')
+        ->withPivot('role', 'joined_at', 'left_at')
+        ->wherePivot('left_at', null)
+        ->withTimestamps();
+}
+
+// الرسائل اللي المستخدم أرسلها
+public function messages()
+{
+    return $this->hasMany(Message::class, 'sender_user_id');
+}
+
+// الرسائل المقروءة
+public function readMessages()
+{
+    return $this->hasMany(MessageRead::class);
+}
+
+// طريقة جلب كل المشاركين في شات الفريق (الدكتور، المعيد، الطلاب)
+public function getTeamChatParticipants($teamId)
+{
+    $team = Team::find($teamId);
+    
+    $participants = collect();
+    
+    // 1. أعضاء الفريق من الطلاب
+    $students = $team->members()->where('status', 'active')->get();
+    $participants = $participants->merge($students);
+    
+    // 2. المشرفين (دكتور ومعيد)
+    $supervisors = $team->supervisors()->with('user')->get();
+    foreach ($supervisors as $supervisor) {
+        $participants->push($supervisor->user);
+    }
+    
+    return $participants->unique('id');
 }
 
 

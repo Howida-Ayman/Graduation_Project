@@ -8,9 +8,13 @@ use App\Models\AcademicYear;
 use App\Models\Proposal;
 use App\Models\ProjectRule;
 use App\Models\TeamMembership;
+use App\Models\TeamSupervisor;
+use App\Models\DatabaseNotification;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProposalController extends Controller
 {
@@ -62,6 +66,13 @@ class ProposalController extends Controller
 
             $team = $membership->team;
 
+            if (!$team) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Team not found'
+                ], 404);
+            }
+
             // 4) التأكد إن المستخدم هو الـ Leader الحالي
             if ((int) $team->leader_user_id !== (int) $user->id) {
                 return response()->json([
@@ -70,13 +81,13 @@ class ProposalController extends Controller
                 ], 403);
             }
 
-            // 5) التأكد من عدم وجود Proposal approved مسبقًا
-            $existingProposal = Proposal::where('team_id', $team->id)->latest()->first();
+            // 5) التأكد من عدم وجود Proposal مسبقًا (مرة واحدة بس)
+            $existingProposal = Proposal::where('team_id', $team->id)->exists();
 
-            if ($existingProposal && $existingProposal->status === 'approved') {
+            if ($existingProposal) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You cannot modify an approved proposal'
+                    'message' => 'Your team has already submitted a proposal. You cannot submit another one.'
                 ], 403);
             }
 
@@ -147,25 +158,54 @@ class ProposalController extends Controller
                 $imagePath = $request->file('image')->store('proposals/images', 'public');
             }
 
-            // 11) إنشاء أو تحديث الـ proposal
-            $proposal = Proposal::updateOrCreate(
-                ['team_id' => $team->id],
-                [
-                    'submitted_by_user_id' => $user->id,
-                    'academic_year_id' => $academicYear->id,
-                    'department_id' => $request->department_id,
-                    'project_type_id' => $request->project_type_id,
-                    'title' => $request->title,
-                    'description' => $request->description,
-                    'problem_statement' => $request->problem_statement,
-                    'solution' => $request->solution,
-                    'category' => $request->category,
-                    'technologies' => $request->technologies,
-                    'attachment_file' => $attachmentPath ? Storage::url($attachmentPath) : null,
-                    'image_url' => $imagePath ? Storage::url($imagePath) : null,
-                    'status' => 'pending',
-                ]
-            );
+            // 11) إنشاء proposal
+            $proposal = Proposal::create([
+                'team_id' => $team->id,
+                'submitted_by_user_id' => $user->id,
+                'academic_year_id' => $academicYear->id,
+                'department_id' => $request->department_id,
+                'project_type_id' => $request->project_type_id,
+                'title' => $request->title,
+                'description' => $request->description,
+                'problem_statement' => $request->problem_statement,
+                'solution' => $request->solution,
+                'category' => $request->category,
+                'technologies' => $request->technologies,
+                'attachment_file' => $attachmentPath ? Storage::url($attachmentPath) : null,
+                'image_url' => $imagePath ? Storage::url($imagePath) : null,
+                'status' => 'pending',
+            ]);
+
+            // ========== إشعار رفع Proposal (لـ Admin) ==========
+            $academicYear = AcademicYear::where('is_active', true)->first();
+
+            if ($academicYear) {
+                // جلب الأدمن
+                $admins = User::where('role_id', 1)->get();
+
+                foreach ($admins as $admin) {
+                    DatabaseNotification::create([
+                        'id' => (string) Str::uuid(),
+                        'type' => 'proposal_submitted',
+                        'notifiable_type' => 'App\\Models\\User',
+                        'notifiable_id' => $admin->id,
+                        'academic_year_id' => $academicYear->id,
+                        'data' => [
+                            'type' => 'proposal_submitted',
+                            'proposal_id' => $proposal->id,
+                            'proposal_title' => $proposal->title,
+                            'team_id' => $team->id,
+                            'team_name' => $team->name ?? "Team {$team->id}",
+                            'message' => "Team '" . ($team->name ?? "Team {$team->id}") . "' has submitted a new project idea: '{$proposal->title}'",
+                            'icon' => 'file-text',
+                            'color' => 'blue',
+                            'created_at' => now(),
+                        ],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
 
             DB::commit();
 
@@ -193,7 +233,7 @@ class ProposalController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error submitting proposal'.$e->getMessage()
+                'message' => 'Error submitting proposal: ' . $e->getMessage()
             ], 500);
         }
     }

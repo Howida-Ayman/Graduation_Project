@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\User\UpdateProfileRequest;
+use App\Http\Requests\Api\User\ChangePasswordRequest;
 use App\Http\Resources\ProfileResource;
 use App\Models\User;
 // use Illuminate\Container\Attributes\DB;
@@ -26,58 +27,119 @@ class UserController extends Controller
     ], 200);
 }
 
-    public function update(UpdateProfileRequest $request)
-    {
-        $user = $request->user();
+public function update(UpdateProfileRequest $request)
+{
+    $user = $request->user();
 
-        DB::beginTransaction();
+    DB::beginTransaction();
 
-        try {
-            // تحديث جدول users
-            $user->update([
-                'full_name' => $request->full_name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'track_name' => $request->track_name,
-            ]);
+    try {
+        // بيانات التحديث الأساسية
+        $updateData = [
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'track_name' => $request->track_name,
+        ];
 
-            // لو Student
-            if ($user->role?->code === 'student') {
-                $user->studentProfile()->updateOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'department_id' => $request->department_id,
-                        'gpa' => $request->gpa,
-                    ]
-                );
+        // ✅ تحديث الصورة الشخصية (إن وجدت)
+        if ($request->hasFile('profile_image_url')) {
+            $file = $request->file('profile_image_url');
+            
+            if ($file->isValid()) {
+                // حذف الصورة القديمة لو موجودة
+                if ($user->profile_image_url && file_exists(public_path($user->profile_image_url))) {
+                    unlink(public_path($user->profile_image_url));
+                }
+
+                // حفظ الصورة الجديدة
+                $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/profiles'), $fileName);
+                
+                $imagePath = 'uploads/profiles/' . $fileName;
+                $updateData['profile_image_url'] = $imagePath;
+                
             }
-
-            // لو Doctor أو TA
-            if (in_array($user->role?->code, ['doctor', 'TA', 'ta'])) {
-                $user->staffprofile()->updateOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'department_id' => $request->department_id,
-                    ]
-                );
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Profile updated successfully'
-            ], 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Something went wrong'
-            ], 500);
         }
+
+        
+        // تحديث جدول users
+        $user->update($updateData);
+        
+        // تأكدي إنها اتحفظت
+        $user->refresh();
+
+        $roleCode = strtolower($user->role?->code);
+        // لو Student
+        if ($roleCode === 'student') {
+            $user->studentProfile()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'department_id' => $request->department_id,
+                    'gpa' => $request->gpa,
+                ]
+            );
+        }
+
+        // لو Doctor أو TA
+        if (in_array($roleCode, ['doctor', 'ta'])) {
+            $user->staffprofile()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'department_id' => $request->department_id,
+                ]
+            );
+        }
+
+        DB::commit();
+
+  return response()->json([
+    'status' => true,
+    'message' => 'Profile updated successfully',
+    'data' => new ProfileResource(
+        $user->fresh()->load([
+            'role',
+            'studentProfile.department',
+            'staffprofile.department',
+        ])
+    )
+], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Something went wrong: ' . $e->getMessage()
+        ], 500);
     }
+}
+
+// أضف هذه الدالة في نفس الـ Controller (ProfileController)
+
+public function changePassword(ChangePasswordRequest $request)
+{
+    $user = $request->user();
+
+    try {
+        // تحديث كلمة المرور فقط
+        $user->update([
+            'password' => bcrypt($request->password)
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Password changed successfully'
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Something went wrong: ' . $e->getMessage()
+        ], 500);
+    }
+}
 public function toggleUserStatus($id)
 {
     $user = User::findOrFail($id);

@@ -3,24 +3,26 @@
 namespace App\Http\Requests\Api\User;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        return Auth::check();
     }
 
     public function rules(): array
     {
         $user = $this->user();
-        $roleCode = $user?->role?->code;
+        $roleCode = strtolower($user?->role?->code);
 
         $rules = [
             'full_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'track_name' => 'nullable|string|max:255',
+            'profile_image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'email' => [
                 'required',
                 'email',

@@ -136,4 +136,31 @@ public function activeMembers()
     return $query->where('academic_year_id', $activeYear->id);
 }
 
+
+// app/Models/Team.php - أضيفي هذه العلاقات
+
+public function conversation()
+{
+    return $this->hasOne(Conversation::class);
+}
+
+
+// الحصول على كل مستخدمي الفريق (طلاب + مشرفين)
+public function getAllUsers()
+{
+    $userIds = collect();
+    
+    // الطلاب
+    $userIds = $userIds->merge(
+        $this->members()->where('status', 'active')->pluck('student_user_id')
+    );
+    
+    // المشرفين
+    $userIds = $userIds->merge(
+        $this->supervisors()->pluck('supervisor_user_id')
+    );
+    
+    return User::whereIn('id', $userIds)->get();
+}
+
 }

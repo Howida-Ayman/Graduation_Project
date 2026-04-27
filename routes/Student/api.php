@@ -1,6 +1,6 @@
 <?php
 
-
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\User\LookupController;
 use App\Http\Controllers\Api\User\UserController;
 use App\Http\Controllers\Api\Library\LibraryController;
@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PreviousProject\PreviousProjectController;
 use App\Http\Controllers\Api\Proposal\ProposalController;
 use App\Http\Controllers\Api\Proposal\ProposalFormController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
 use App\Http\Controllers\Api\Team\TeamController;
 use App\Http\Controllers\Api\Submission\SubmissionController;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Requests\Students\StudentsRequestsController;
 use App\Http\Controllers\Api\Requests\Supervisor\SupervisionRequestsController;
+use App\Http\Controllers\Api\TermsController;
 use App\Http\Controllers\Api\TimeLine\TimelineController;
 
 Route::get('/user', function (Request $request) {
@@ -25,7 +27,11 @@ Route::get('/user', function (Request $request) {
 Route::middleware('auth:sanctum')->group(function(){
 //user
 Route::get('profile',[UserController::class,'profile'])->name('profile');
-Route::put('profile',[UserController::class,'update'])->name('profile.update');
+Route::post('profile',[UserController::class,'update'])->name('profile.update');
+
+// تغيير كلمة المرور (فانكشن منفصلة)
+Route::put('/profile/change-password', [UserController::class, 'changePassword']);
+
 Route::get('academic-years', [LookupController::class, 'academicYears']);
 Route::get('departments', [LookupController::class, 'departments']);
 
@@ -74,6 +80,30 @@ Route::get('/my-timeline/{id}', [TimelineController::class, 'show']);
 
 // Route::get('/timeline', [TimelineController::class, 'index']);
 // Route::get('/timeline/{id}', [TimelineController::class, 'show']);
+
+
+
+    // Reports
+    Route::prefix('reports')->group(function () {
+    Route::post('/', [ReportController::class, 'store']);           // Submit report
+    Route::get('/my-reports', [ReportController::class, 'myReports']); // Get user's reports
+    });
+
+
+
+    //chat
+    Route::prefix('chat')->group(function () {
+        Route::get('/team', [ChatController::class, 'getTeamConversation']);
+        Route::get('/conversations/{conversation}/messages', [ChatController::class, 'getMessages']);
+        Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
+        Route::put('/conversations/{conversation}/read', [ChatController::class, 'markAsRead']);
+    });
+    
+    
+ 
 });
+
+
+
 
 

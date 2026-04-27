@@ -13,3 +13,6 @@ Schedule::command('milestones:sync-statuses')->everyMinute();
 
 // Schedule::command('team-milestone:update')->everyMinute();
 Schedule::command('team-milestone:update')->dailyAt('00:00');
+
+// تشغيل يومي الساعة 00:00
+Schedule::command('milestones:notify')->dailyAt('00:00');
