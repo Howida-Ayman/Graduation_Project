@@ -13,9 +13,14 @@ return new class extends Migration
     {
         Schema::create('milestones', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('project_course_id')
+            ->constrained('project_courses')
+            ->restrictOnDelete()
+             ->cascadeOnUpdate();
             $table->string('title');
             $table->text('description')->nullable();
             $table->unsignedSmallInteger('phase_number');
+            $table->decimal('max_score', 8, 2)->default(20);
             $table->dateTime('start_date');
             $table->dateTime('deadline');
             $table->enum('status',['completed','on_progress','pending']);
@@ -25,7 +30,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->unique('phase_number');
+            $table->unique(['project_course_id', 'phase_number']);
             $table->index( 'status');
             $table->index(['start_date']);
             $table->index(['deadline']);

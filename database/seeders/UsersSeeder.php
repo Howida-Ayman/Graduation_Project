@@ -297,7 +297,7 @@ foreach ($students as $student) {
             'academic_year_id' => $activeAcademicYear->id,
         ],
         [
-            'status' => 'active',
+            'status' => 'in_progress',
             'created_at' => $now,
             'updated_at' => $now,
         ]

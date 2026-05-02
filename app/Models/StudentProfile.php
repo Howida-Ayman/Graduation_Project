@@ -17,6 +17,7 @@ class StudentProfile extends Model
         'user_id',
         'department_id',
         'gpa',
+        'has_graduated'
     ];
 
     public function user()
@@ -29,5 +30,9 @@ class StudentProfile extends Model
     {
         return $this->belongsTo(Department::class);
     }
+    public function enrollments()
+{
+    return $this->hasMany(StudentEnrollment::class, 'student_user_id', 'user_id');
+}
 
 }

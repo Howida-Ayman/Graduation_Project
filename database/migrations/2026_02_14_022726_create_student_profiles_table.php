@@ -15,6 +15,8 @@ return new class extends Migration
             $table->foreignId('user_id')->primary()->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('department_id')->constrained('departments')->restrictOnDelete()->cascadeOnUpdate();
             $table->decimal('gpa', 3, 2)->nullable();
+            $table->boolean('has_graduated')
+            ->default(false);
             $table->timestamps();
 
             $table->index(['department_id']);

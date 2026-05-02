@@ -270,6 +270,28 @@ public function getTeamChatParticipants($teamId)
     
     return $participants->unique('id');
 }
+public function isGraduated()
+{
+    return $this->studentProfile && $this->studentProfile->has_graduated;
+}
+public function isInProjectOne()
+{
+    return $this->enrollments()
+        ->whereHas('projectCourse', function ($q) {
+            $q->where('order', 1);
+        })
+        ->where('status', 'in_progress')
+        ->exists();
+}
+public function isInProjectTwo()
+{
+    return $this->enrollments()
+        ->whereHas('projectCourse', function ($q) {
+            $q->where('order', 2);
+        })
+        ->where('status', 'in_progress')
+        ->exists();
+}
 
 
 }

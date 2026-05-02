@@ -23,13 +23,25 @@ return new class extends Migration
         ->restrictOnDelete()
         ->cascadeOnUpdate();
 
-    $table->enum('status', ['active', 'failed', 'graduated'])
-        ->default('active');
+    $table->foreignId('project_course_id')
+    ->constrained('project_courses')
+    ->restrictOnDelete()
+    ->cascadeOnUpdate();
+
+    // حالة الطالب في المادة
+    $table->enum('status', [
+                'in_progress',
+                'passed',
+                'failed'
+    ])->default('in_progress');
 
     $table->timestamps();
 
     // الطالب يظهر مرة واحدة فقط في كل سنة
-    $table->unique(['student_user_id', 'academic_year_id']);
+    $table->unique(
+    ['student_user_id', 'academic_year_id', 'project_course_id'],
+    'student_course_unique'
+);
 
     $table->index(['student_user_id']);
     $table->index(['academic_year_id']);

@@ -9,24 +9,34 @@ class DefenseGrade extends Model
     protected $table='defense_grades';
      protected $fillable = [
         'committee_id',
-        'entered_by_user_id',
+        'project_course_id',
         'grade',
-        'notes',
-        'entered_at',
+        'graded_by_user_id',
+        'graded_at',
     ];
 
     protected $casts = [
         'grade' => 'decimal:2',
-        'entered_at' => 'datetime',
+        'graded_at' => 'datetime',
     ];
 
-    public function committee()
-    {
-        return $this->belongsTo(DefenseCommittee::class, 'committee_id');
-    }
+public function team()
+{
+    return $this->belongsTo(Team::class);
+}
 
-    public function enteredBy()
-    {
-        return $this->belongsTo(User::class, 'entered_by_user_id');
-    }
+public function committee()
+{
+    return $this->belongsTo(DefenseCommittee::class);
+}
+
+public function projectCourse()
+{
+    return $this->belongsTo(ProjectCourse::class);
+}
+
+public function gradedBy()
+{
+    return $this->belongsTo(User::class, 'graded_by_user_id');
+}
 }

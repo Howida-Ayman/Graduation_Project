@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('defense_committees', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('project_course_id')
+            ->constrained('project_courses')
+            ->restrictOnDelete()
+            ->cascadeOnUpdate();
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete()->cascadeOnUpdate();
             $table->dateTime('scheduled_at');
@@ -22,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['team_id']);
-            $table->unique('team_id');
+            $table->unique(['team_id', 'project_course_id']);
             $table->index(['scheduled_at']);
             $table->index(['created_by_admin_id']);
         });

@@ -109,14 +109,24 @@ public function activeMembers()
         ->withPivot(['status', 'milestone_grade', 'graded_by_user_id', 'graded_at'])
         ->withTimestamps();
     }
+        //  لجنة المايلستون (واحدة بس)
+    public function milestoneCommittee()
+    {
+        return $this->hasOne(MilestoneCommittee::class);
+    }
+        //  درجات المايلستون
+    public function milestoneGrades()
+    {
+        return $this->hasMany(MilestoneCommitteeGrade::class);
+    }
 
     public function graduationProject()
     {
         return $this->hasOne(GraduationProject::class, 'team_id');
     }
-    public function defenseCommittee()
+    public function defenseCommittees()
     {
-    return $this->hasOne(DefenseCommittee::class, 'team_id');
+        return $this->hasMany(DefenseCommittee::class);
     }
     public function meetings()
     {

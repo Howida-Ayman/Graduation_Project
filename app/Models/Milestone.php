@@ -14,6 +14,8 @@ class Milestone extends Model
         'title',
         'description',
         'phase_number',
+        'project_course_id',
+        'max_score',
         'start_date',
         'deadline',
         'status',
@@ -121,4 +123,13 @@ class Milestone extends Model
             ->withPivot('status')
             ->withTimestamps();
     }
+    public function projectCourse()
+{
+    return $this->belongsTo(ProjectCourse::class);
+}
+public function committeeGrades()
+{
+    return $this->hasMany(MilestoneCommitteeGrade::class);
+}
+
 }

@@ -18,14 +18,13 @@ return new class extends Migration
             ->cascadeOnDelete()
             ->cascadeOnUpdate();
 
-           $table->foreignId('entered_by_user_id')
+           $table->foreignId('graded_by_user_id')
            ->constrained('users')
            ->restrictOnDelete()
            ->cascadeOnUpdate();
 
            $table->decimal('grade', 8, 2);
-           $table->text('notes')->nullable();
-           $table->timestamp('entered_at')->nullable();
+           $table->timestamp('graded_at')->nullable();
 
            $table->timestamps();
 

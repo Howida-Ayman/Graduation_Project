@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('academic_year_id')->constrained('academic_years')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('department_id')->constrained('departments')->restrictOnDelete()->cascadeOnUpdate();
             $table->foreignId('leader_user_id')->constrained('users')->restrictOnDelete()->cascadeOnUpdate();
+            $table->boolean('is_locked')->default(false);
             $table->timestamps();
 
             $table->index(['academic_year_id']);

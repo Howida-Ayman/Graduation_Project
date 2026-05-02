@@ -9,6 +9,7 @@ class DefenseCommittee extends Model
     protected $table='defense_committees';
     protected $fillable = [
         'academic_year_id',
+        'project_course_id',
         'team_id',
         'scheduled_at',
         'location',
@@ -58,4 +59,8 @@ class DefenseCommittee extends Model
     {
         return $this->hasOne(DefenseGrade::class, 'committee_id');
     }
+    public function projectCourse()
+{
+    return $this->belongsTo(ProjectCourse::class);
+}
 }

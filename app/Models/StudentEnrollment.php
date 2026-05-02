@@ -9,14 +9,15 @@ class StudentEnrollment extends Model
   protected $fillable = [
         'student_user_id',
         'academic_year_id',
-        'status'
+        'project_course_id',
+        'status',
     ];
     protected $casts = [
     'status' => 'string',
 ];
-public function scopeActive($query)
+public function scopeInProgress($query)
 {
-    return $query->where('status', 'active');
+    return $query->where('status', 'in_progress');
 }
 
     public function student()
@@ -27,5 +28,9 @@ public function scopeActive($query)
     public function academicYear()
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+    public function projectCourse()
+    {
+        return $this->belongsTo(ProjectCourse::class);
     }
 }
