@@ -11,6 +11,20 @@ use Illuminate\Http\Request;
 
 class ProposalFormController extends Controller
 {
+    <?php
+
+namespace App\Http\Controllers\Api\Proposal;
+
+use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
+use App\Models\Department;
+use App\Models\ProjectCourse;
+use App\Models\ProjectType;
+use App\Models\TeamMembership;
+use Illuminate\Http\Request;
+
+class ProposalFormController extends Controller
+{
     public function getFormData(Request $request)
     {
         $user = $request->user();
@@ -18,34 +32,41 @@ class ProposalFormController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not authenticated'
+                'message' => 'User not authenticated.'
             ], 401);
         }
 
-        // 1) السنة الأكاديمية الفعالة
         $academicYear = AcademicYear::where('is_active', 1)->first();
 
         if (!$academicYear) {
             return response()->json([
                 'success' => false,
-                'message' => 'No active academic year found'
+                'message' => 'No active academic year found.'
             ], 404);
         }
 
-        // 2) التأكد إن الطالب active في السنة الحالية
+        $project1 = ProjectCourse::where('order', 1)->first();
+
+        if (!$project1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Capstone Project I is not configured.'
+            ], 422);
+        }
+
         $activeEnrollment = $user->enrollments()
             ->where('academic_year_id', $academicYear->id)
-            ->where('status', 'active')
+            ->where('project_course_id', $project1->id)
+            ->where('status', 'in_progress')
             ->first();
 
         if (!$activeEnrollment) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not allowed to access this form in the current academic year'
+                'message' => 'Only students enrolled in Capstone Project I can access the proposal form.'
             ], 403);
         }
 
-        // 3) نجيب الفريق بتاع المستخدم في السنة الحالية فقط
         $membership = TeamMembership::with([
                 'team',
                 'team.members.user' => function ($q) {
@@ -63,26 +84,40 @@ class ProposalFormController extends Controller
         if (!$membership) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not in any team'
+                'message' => 'You are not in any team.'
             ], 403);
         }
 
-        // 4) أعضاء الفريق
-        $teamMembers = $membership->team->members
+        $team = $membership->team;
+
+        if (!$team) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Team not found.'
+            ], 404);
+        }
+
+        if ((int) $team->leader_user_id !== (int) $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only the team leader can access the proposal form.'
+            ], 403);
+        }
+
+        $teamMembers = $team->members
             ->where('status', 'active')
-            ->filter(fn($member) => $member->user)
+            ->filter(fn ($member) => $member->user)
             ->map(function ($member) {
                 return [
                     'id' => $member->student_user_id,
                     'name' => $member->user?->full_name,
+                    'role_in_team' => $member->role_in_team,
                 ];
             })->values();
 
-        // 5) الأقسام
         $departments = Department::where('is_active', true)
             ->get(['id', 'name']);
 
-        // 6) أنواع المشاريع
         $projectTypes = ProjectType::where('is_active', true)
             ->get(['id', 'name']);
 
@@ -93,10 +128,15 @@ class ProposalFormController extends Controller
                     'id' => $academicYear->id,
                     'code' => $academicYear->code,
                 ],
+                'team' => [
+                    'id' => $team->id,
+                    'leader_user_id' => $team->leader_user_id,
+                ],
                 'team_members' => $teamMembers,
                 'departments' => $departments,
                 'project_types' => $projectTypes,
             ]
         ], 200);
     }
+}
 }

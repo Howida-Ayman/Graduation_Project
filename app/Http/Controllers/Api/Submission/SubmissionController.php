@@ -34,7 +34,7 @@ class SubmissionController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not authenticated'
+                'message' => 'User not authenticated.'
             ], 401);
         }
 
@@ -43,26 +43,30 @@ class SubmissionController extends Controller
         if (!$academicYear) {
             return response()->json([
                 'success' => false,
-                'message' => 'No active academic year found'
+                'message' => 'No active academic year found.'
             ], 404);
         }
 
         if (!$user->is_active) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your account is not activated'
+                'message' => 'Your account is not activated.'
             ], 403);
         }
 
         $activeEnrollment = $user->enrollments()
             ->where('academic_year_id', $academicYear->id)
-            ->where('status', 'active')
+            ->where('status', 'in_progress')
+            ->whereHas('projectCourse', function ($q) {
+                $q->whereIn('order', [1, 2]);
+            })
+            ->with('projectCourse')
             ->first();
 
         if (!$activeEnrollment) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not allowed to access submissions in this academic year'
+                'message' => 'You are not enrolled in an active capstone project.'
             ], 403);
         }
 
@@ -77,32 +81,60 @@ class SubmissionController extends Controller
         if (!$membership) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not in any team'
+                'message' => 'You are not in any team.'
             ], 403);
         }
 
         $milestones = Milestone::availableForSubmission()
+            ->where('project_course_id', $activeEnrollment->project_course_id)
             ->orderBy('phase_number', 'asc')
-            ->get(['id', 'title', 'description', 'deadline']);
+            ->get([
+                'id',
+                'project_course_id',
+                'title',
+                'description',
+                'deadline',
+                'max_score',
+                'status',
+                'is_open'
+            ]);
 
-        $data = $milestones->map(function ($milestone) {
+        $data = $milestones->map(function ($milestone) use ($membership) {
+            $latestSubmission = Submission::where('team_id', $membership->team_id)
+                ->where('milestone_id', $milestone->id)
+                ->latest()
+                ->first();
+
             return [
                 'id' => $milestone->id,
+                'project_course_id' => $milestone->project_course_id,
                 'title' => $milestone->title,
                 'description' => $milestone->description,
                 'deadline' => $milestone->deadline,
+                'max_score' => $milestone->max_score,
+                'status' => $milestone->status,
+                'is_open' => $milestone->is_open,
+                'has_submission' => (bool) $latestSubmission,
+                'latest_submission_id' => $latestSubmission?->id,
+                'latest_submitted_at' => $latestSubmission?->submitted_at,
             ];
         })->values();
 
         return response()->json([
             'success' => true,
+            'project_course' => [
+                'id' => $activeEnrollment->projectCourse?->id,
+                'name' => $activeEnrollment->projectCourse?->name,
+                'order' => $activeEnrollment->projectCourse?->order,
+            ],
             'data' => $data
-        ]);
+        ], 200);
 
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
-            'message' => 'Something went wrong'
+            'message' => 'Failed to retrieve available milestones.',
+            'error' => config('app.debug') ? $e->getMessage() : null,
         ], 500);
     }
 }
@@ -122,26 +154,30 @@ class SubmissionController extends Controller
         if (!$academicYear) {
             return response()->json([
                 'success' => false,
-                'message' => 'No active academic year found'
+                'message' => 'No active academic year found.'
             ], 404);
         }
 
         if (!$user || !$user->is_active) {
             return response()->json([
                 'success' => false,
-                'message' => 'Your account is not activated'
+                'message' => 'Your account is not activated.'
             ], 403);
         }
 
         $activeEnrollment = $user->enrollments()
             ->where('academic_year_id', $academicYear->id)
-            ->where('status', 'active')
+            ->where('status', 'in_progress')
+            ->whereHas('projectCourse', function ($q) {
+                $q->whereIn('order', [1, 2]);
+            })
+            ->with('projectCourse')
             ->first();
 
         if (!$activeEnrollment) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not allowed to upload submissions in this academic year'
+                'message' => 'You are not allowed to upload submissions because you are not enrolled in an active capstone project.'
             ], 403);
         }
 
@@ -156,7 +192,7 @@ class SubmissionController extends Controller
         if (!$membership) {
             return response()->json([
                 'success' => false,
-                'message' => 'You are not in any team'
+                'message' => 'You are not in any team.'
             ], 403);
         }
 
@@ -169,12 +205,13 @@ class SubmissionController extends Controller
 
         $milestone = Milestone::availableForSubmission()
             ->where('id', $request->milestone_id)
+            ->where('project_course_id', $activeEnrollment->project_course_id)
             ->first();
 
         if (!$milestone) {
             return response()->json([
                 'success' => false,
-                'message' => 'This milestone is not available for submission'
+                'message' => 'This milestone is not available for submission for your current capstone project.'
             ], 400);
         }
 
@@ -183,12 +220,11 @@ class SubmissionController extends Controller
         $teamStatus = $now <= $deadline ? 'on_track' : 'delayed';
 
         $submission = Submission::create([
-            'milestone_id' => $request->milestone_id,
+            'milestone_id' => $milestone->id,
             'team_id' => $membership->team_id,
             'submitted_by_user_id' => $user->id,
             'notes' => $request->notes,
             'submitted_at' => $now,
-            'team_status' => $teamStatus,
         ]);
 
         TeamMilestonStatus::updateOrCreate(
@@ -198,6 +234,7 @@ class SubmissionController extends Controller
             ],
             [
                 'status' => $teamStatus,
+                'status_updated_at' => now(),
             ]
         );
 
@@ -205,7 +242,11 @@ class SubmissionController extends Controller
 
         foreach ($request->file('files') as $file) {
             $originalName = $file->getClientOriginalName();
-            $path = $file->store('submissions/' . $membership->team_id . '/' . $submission->id, 'public');
+
+            $path = $file->store(
+                'submissions/' . $membership->team_id . '/' . $submission->id,
+                'public'
+            );
 
             $submissionFile = SubmissionFile::create([
                 'submission_id' => $submission->id,
@@ -231,72 +272,76 @@ class SubmissionController extends Controller
             meta: [
                 'submission_id' => $submission->id,
                 'milestone_id' => $milestone->id,
+                'project_course_id' => $milestone->project_course_id,
                 'files_count' => count($uploadedFiles),
                 'team_status' => $teamStatus,
             ]
         );
-     // بعد إنشاء الـ submission
-$academicYear = AcademicYear::where('is_active', true)->first();
 
-if ($academicYear) {
-    // ✅ نجيب الـ team بشكل صحيح
-    $team = Team::find($membership->team_id);
-    
-    // جلب المشرفين على الفريق
-    $supervisors = TeamSupervisor::where('team_id', $membership->team_id)
-        ->whereNull('ended_at')
-        ->with('supervisor')
-        ->get();
-    
-    foreach ($supervisors as $supervisor) {
-        if ($supervisor->supervisor) {
-            DatabaseNotification::create([
-                'id' => (string) Str::uuid(),
-                'type' => 'submission_uploaded',
-                'notifiable_type' => 'App\\Models\\User',
-                'notifiable_id' => $supervisor->supervisor->id,
-                'academic_year_id' => $academicYear->id,
-                'data' => [
+        $team = Team::find($membership->team_id);
+
+        $supervisors = TeamSupervisor::where('team_id', $membership->team_id)
+            ->whereNull('ended_at')
+            ->with('supervisor')
+            ->get();
+
+        foreach ($supervisors as $supervisor) {
+            if ($supervisor->supervisor) {
+                DatabaseNotification::create([
+                    'id' => (string) Str::uuid(),
                     'type' => 'submission_uploaded',
-                    'submission_id' => $submission->id,
-                    'milestone_id' => $milestone->id,
-                    'milestone_title' => $milestone->title,
-                    'team_id' => $membership->team_id,
-                    'team_name' => $team?->name ?? "Team {$membership->team_id}",
-                    'message' => "Team '" . ($team?->name ?? "Team {$membership->team_id}") . "' has uploaded a submission for milestone '{$milestone->title}'",
-                    'icon' => 'upload',
-                    'color' => 'green',
+                    'notifiable_type' => 'App\\Models\\User',
+                    'notifiable_id' => $supervisor->supervisor->id,
+                    'academic_year_id' => $academicYear->id,
+                    'data' => [
+                        'type' => 'submission_uploaded',
+                        'submission_id' => $submission->id,
+                        'milestone_id' => $milestone->id,
+                        'milestone_title' => $milestone->title,
+                        'project_course_id' => $milestone->project_course_id,
+                        'team_id' => $membership->team_id,
+                        'team_name' => $team?->name ?? "Team {$membership->team_id}",
+                        'message' => "Team '" . ($team?->name ?? "Team {$membership->team_id}") . "' has uploaded a submission for milestone '{$milestone->title}'",
+                        'icon' => 'upload',
+                        'color' => 'green',
+                        'created_at' => now(),
+                    ],
                     'created_at' => now(),
-                ],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                    'updated_at' => now(),
+                ]);
+            }
         }
-    }
-}
-
 
         DB::commit();
 
         return response()->json([
             'success' => true,
-            'message' => 'Submission uploaded successfully',
+            'message' => 'Submission uploaded successfully.',
             'data' => [
                 'submission_id' => $submission->id,
                 'milestone_id' => $milestone->id,
+                'project_course_id' => $milestone->project_course_id,
                 'team_status' => $teamStatus,
+                'files' => $uploadedFiles,
             ]
         ], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed.',
+            'errors' => $e->errors(),
+        ], 422);
 
     } catch (\Exception $e) {
         DB::rollBack();
 
         return response()->json([
-           'success' => false,
-        'message' => 'Upload failed',
-        'error' => $e->getMessage(),
-        'line' => $e->getLine(),
-        'file' => $e->getFile()
+            'success' => false,
+            'message' => 'Upload failed.',
+            'error' => config('app.debug') ? $e->getMessage() : null,
         ], 500);
     }
 }
