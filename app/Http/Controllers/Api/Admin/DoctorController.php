@@ -116,4 +116,30 @@ class DoctorController extends Controller
             'message' => 'All doctors deactivated successfully'
         ], 200);
     }
+
+public function showStaff($id)
+{
+    $staff = User::with([
+            'staffprofile' 
+        ])
+        ->whereIn('role_id', [2, 3]) 
+        ->findOrFail($id);
+
+    $responseData = [
+        'id' => $staff->id,
+        'full_name' => $staff->full_name,
+        'email' => $staff->email,
+        'phone' => $staff->phone,
+        'is_active' => $staff->is_active,
+
+        'role' => $staff->role_id == 2 ? 'Doctor' : 'Teaching Assistant',
+
+       
+    ];
+
+    return response()->json([
+        'message' => 'Staff retrieved successfully.',
+        'data' => $staff
+    ], 200);
+}
 }

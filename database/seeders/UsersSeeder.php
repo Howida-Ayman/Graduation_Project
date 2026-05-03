@@ -294,6 +294,7 @@ foreach ($students as $student) {
     StudentEnrollment::updateOrCreate(
         [
             'student_user_id' => $user->id,
+            'project_course_id'=>1,
             'academic_year_id' => $activeAcademicYear->id,
         ],
         [

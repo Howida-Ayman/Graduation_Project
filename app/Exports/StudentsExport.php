@@ -3,47 +3,55 @@
 namespace App\Exports;
 
 use App\Models\AcademicYear;
-use App\Models\User;
+use App\Models\ProjectCourse;
+use App\Models\StudentEnrollment;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class StudentsExport implements FromCollection, WithHeadings
 {
+    private $course;
+
+    public function __construct($course)
+    {
+        $this->course = $course;
+    }
+
     public function collection()
     {
         $activeAcademicYear = AcademicYear::where('is_active', true)->first();
 
-        if (!$activeAcademicYear) {
-            return collect();
+        $projectCourse = ProjectCourse::where('order', $this->course)->first();
+
+        if (!$activeAcademicYear || !$projectCourse) {
+            return collect([]);
         }
 
-        return User::with([
-                'studentprofile.department',
-                'enrollments' => function ($q) use ($activeAcademicYear) {
-                    $q->where('academic_year_id', $activeAcademicYear->id)
-                      ->where('status', 'active')
-                      ->with('academicYear');
-                }
-            ])
-            ->where('role_id', 4)
-            ->whereHas('enrollments', function ($q) use ($activeAcademicYear) {
-                $q->where('academic_year_id', $activeAcademicYear->id)
-                  ->where('status', 'active');
-            })
+        return StudentEnrollment::with([
+        'student.studentprofile.department',
+        'academicYear',
+        'projectCourse'
+         ])
+        ->where('academic_year_id', $activeAcademicYear->id)
+        ->where('project_course_id', $projectCourse->id)
+        ->whereHas('student', function ($q) {
+         $q->where('is_active', true);
+        })
             ->get()
-            ->map(function ($student) {
-                $enrollment = $student->enrollments->first();
+            ->map(function ($enrollment) {
+
+                $student = $enrollment->student;
 
                 return [
-                    'Name' => $student->full_name,
-                    'National ID' => $student->national_id,
-                    'Email' => $student->email ?? "",
-                    'Department' => $student->studentprofile?->department?->name ?? "",
-                    'GPA' => $student->studentprofile?->gpa ?? "",
-                    'Phone' => $student->phone ?? "",
-                    'Is Active' => $student->is_active ? 'Yes' : 'No',
-                    'Academic Year' => $enrollment?->academicYear?->code ?? "",
-                    'Enrollment Status' => $enrollment?->status ?? "",
+                    'student_id' => $student?->id,
+                    'full_name' => $student?->full_name,
+                    'national_id' => $student?->national_id,
+                    'email' => $student?->email,
+                    'phone' => $student?->phone,
+                    'department' => $student?->studentprofile?->department?->name,
+                    'gpa' => $student?->studentprofile?->gpa,
+                    'academic_year' => $enrollment->academicYear?->code,
+                    'status' => $enrollment->status,
                 ];
             });
     }
@@ -51,15 +59,15 @@ class StudentsExport implements FromCollection, WithHeadings
     public function headings(): array
     {
         return [
-            'Name',
+            'Student ID',
+            'Full Name',
             'National ID',
             'Email',
+            'Phone',
             'Department',
             'GPA',
-            'Phone',
-            'Is Active',
             'Academic Year',
-            'Enrollment Status'
+            'Status',
         ];
     }
 }

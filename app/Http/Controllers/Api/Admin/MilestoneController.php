@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Admin\MilestonesRequest;
 use App\Models\AcademicYear;
 use App\Models\DatabaseNotification;
 use App\Models\Milestone;
+use App\Models\ProjectRule;
 use App\Models\Team;
 use App\Models\TeamMembership;
 use App\Models\User;
@@ -33,17 +34,57 @@ public function index()
         'data' => $milestones
     ], 200);
 }
-   public function store(MilestonesRequest $request)
+public function store(MilestonesRequest $request)
 {
     try {
         $milestone = DB::transaction(function () use ($request) {
-            $phase_number = $this->calculateSortOrder($request->previous_milestone_id);
-            $this->shiftMilestones($phase_number, 'increment');
+
+            $rules = ProjectRule::first();
+
+            if (!$rules) {
+                throw new \Exception('Project rules must be configured before creating milestones.');
+            }
+
+            $milestoneCommitteeTotalScore = 100 - (
+                (float) $rules->supervisor_max_score +
+                (float) $rules->defense_max_score
+            );
+
+            if ($milestoneCommitteeTotalScore <= 0) {
+                throw new \Exception('Invalid grading rules. Supervisor and defense scores must leave marks for milestones.');
+            }
+
+            $currentMilestonesTotal = Milestone::where('project_course_id', $request->project_course_id)
+                ->sum('max_score');
+
+            $newTotal = $currentMilestonesTotal + (float) $request->max_score;
+
+$remainingScore = $milestoneCommitteeTotalScore - $currentMilestonesTotal;
+
+if ($newTotal > $milestoneCommitteeTotalScore) {
+    throw new \Exception(
+        'Milestone score exceeds the allowed limit for this course. ' .
+        // 'Allowed milestone total: ' . $milestoneCommitteeTotalScore .
+        // ', current used score: ' . $currentMilestonesTotal .
+        ', remaining score: ' . $remainingScore 
+    );
+}
+
+            $phase_number = $this->calculateSortOrder(
+                $request->previous_milestone_id,
+            );
+
+            $this->shiftMilestones(
+                $phase_number,
+                'increment',
+            );
 
             $milestone = Milestone::create([
+                'project_course_id' => $request->project_course_id,
                 'title' => $request->title,
-                'description' => $request->description ? $request->description : null,
+                'description' => $request->description ?: null,
                 'phase_number' => $phase_number,
+                'max_score' => $request->max_score,
                 'start_date' => $request->start_date,
                 'deadline' => $request->deadline,
                 'status' => 'pending',
@@ -65,15 +106,15 @@ public function index()
         });
 
         return response()->json([
-            'message' => 'Milestone created successfully',
-            'data' => $milestone->load('requirements')
+            'message' => 'Milestone created successfully.',
+            'data' => $milestone->load(['requirements', 'projectCourse'])
         ], 201);
 
     } catch (\Throwable $th) {
         return response()->json([
-            'message' => 'Failed to create milestone',
+            'message' => 'Failed to create milestone.',
             'error' => $th->getMessage()
-        ], 500);
+        ], 422);
     }
 }
     
@@ -186,70 +227,126 @@ public function milestonesByStatus($status)
         ], 500);
     }
 }
-public function update(Request $request,$id)
+public function update(Request $request, $id)
 {
     try {
-        $milestone=DB::transaction(function() use($id, $request)
-        {
-            $milestone=Milestone::with('requirements')->findOrFail($id);
+        $milestone = DB::transaction(function () use ($id, $request) {
+
+            $milestone = Milestone::with('requirements')->findOrFail($id);
+
             $request->validate([
-            'previous_milestone_id' => 'nullable|exists:milestones,id',
-            'title'=>'nullable|string|unique:milestones,title,'.$milestone->id,
-            'description'=>'nullable|string',
-            'start_date' => 'nullable|date',
-            'deadline' => 'nullable|date',
-            'requirements' => 'nullable|array',
-            'requirements.*.id' => 'nullable|exists:milestone_requirements,id', // للـ update
-            'requirements.*.text' => 'required_with:requirements.*|string|max:500',
-            'requirements.*.action' => 'nullable|in:update,delete,new' // تحديد نوع العملية
+                'previous_milestone_id' => 'nullable|exists:milestones,id',
+
+                'project_course_id' => 'nullable|exists:project_courses,id',
+                'title' => 'nullable|string|max:255|unique:milestones,title,' . $milestone->id,
+                'description' => 'nullable|string',
+
+                'max_score' => 'nullable|numeric|min:0.01|max:100',
+
+                'start_date' => 'nullable|date',
+                'deadline' => 'nullable|date',
+
+                'requirements' => 'nullable|array',
+                'requirements.*.id' => 'nullable|exists:milestone_requirements,id',
+                'requirements.*.text' => 'required_with:requirements.*|string|max:500',
+                'requirements.*.action' => 'nullable|in:update,delete,new',
             ]);
+
+            $finalProjectCourseId = $request->filled('project_course_id')
+                ? $request->project_course_id
+                : $milestone->project_course_id;
+
+            $finalMaxScore = $request->filled('max_score')
+                ? (float) $request->max_score
+                : (float) $milestone->max_score;
+
             $finalStartDate = $request->filled('start_date')
-             ? $request->start_date
-             : $milestone->start_date;
+                ? $request->start_date
+                : $milestone->start_date;
 
             $finalDeadline = $request->filled('deadline')
-            ? $request->deadline
-            : $milestone->deadline;
+                ? $request->deadline
+                : $milestone->deadline;
 
-          if ($finalStartDate && $finalDeadline) {
-            if (strtotime($finalDeadline) <= strtotime($finalStartDate)) {
-             throw \Illuminate\Validation\ValidationException::withMessages([
-            'deadline' => ['The deadline must be after the start date.']
-          ]);
-    }
-}
+            if ($finalStartDate && $finalDeadline) {
+                if (strtotime($finalDeadline) <= strtotime($finalStartDate)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'deadline' => ['The deadline must be after the start date.']
+                    ]);
+                }
+            }
+
+            //  Check milestone score total per course
+            $rules = ProjectRule::first();
+
+            if (!$rules) {
+                throw new \Exception('Project rules must be configured before updating milestones.');
+            }
+
+            $milestoneCommitteeTotalScore = 100 - (
+                (float) $rules->supervisor_max_score +
+                (float) $rules->defense_max_score
+            );
+
+            $currentMilestonesTotal = Milestone::where('project_course_id', $finalProjectCourseId)
+                ->where('id', '!=', $milestone->id)
+                ->sum('max_score');
+
+            $newTotal = $currentMilestonesTotal + $finalMaxScore;
+
+            if ($newTotal > $milestoneCommitteeTotalScore) {
+                $remainingScore = $milestoneCommitteeTotalScore - $currentMilestonesTotal;
+
+                throw new \Exception(
+                    'Milestone score exceeds the allowed limit for this course. ' .
+                    'Allowed milestone total: ' . $milestoneCommitteeTotalScore .
+                    ', current used score: ' . $currentMilestonesTotal .
+                    ', remaining score: ' . $remainingScore 
+                );
+            }
+
             $milestone->update([
-            'title' => $request->filled('title') ? $request->title : $milestone->title,
-            'description' => $request->filled('description') ? $request->description : $milestone->description,
-            'start_date' => $finalStartDate,
-            'deadline' => $finalDeadline,
-            'is_forced_open' => false,
-            'is_forced_closed' => false,
-]);
-            // 3. لو في previous_milestone_id (إعادة ترتيب)
+                'project_course_id' => $finalProjectCourseId,
+
+                'title' => $request->filled('title') ? $request->title : $milestone->title,
+                'description' => $request->filled('description') ? $request->description : $milestone->description,
+
+                'max_score' => $finalMaxScore,
+
+                'start_date' => $finalStartDate,
+                'deadline' => $finalDeadline,
+
+                'is_forced_open' => false,
+                'is_forced_closed' => false,
+            ]);
+
             if ($request->has('previous_milestone_id')) {
                 $this->reorderMilestoneOnUpdate($milestone, $request->previous_milestone_id);
             }
-            // 2. تحديث الـ requirements لو موجودة
+
             if ($request->has('requirements')) {
                 $this->updateRequirements($milestone, $request->requirements);
             }
-           return $milestone->load('requirements');
+
+            return $milestone->load(['requirements', 'projectCourse']);
         });
+
         return response()->json([
-            'message' => 'Milestone updated successfully',
+            'message' => 'Milestone updated successfully.',
             'data' => $milestone
         ], 200);
+
     } catch (\Illuminate\Validation\ValidationException $e) {
         return response()->json([
-            'message' => 'Validation failed',
+            'message' => 'Validation failed.',
             'errors' => $e->errors()
         ], 422);
-}catch (\Throwable $th) {
+
+    } catch (\Throwable $th) {
         return response()->json([
-            'message' => 'Failed to update milestone',
-            'error' => config('app.debug') ? $th->getMessage() : null
-        ], 500);
+            'message' => 'Failed to update milestone.',
+            'error' => $th->getMessage()
+        ], 422);
     }
 }
 /**

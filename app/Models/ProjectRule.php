@@ -11,7 +11,10 @@ class ProjectRule extends Model
     protected $fillable = [
         'min_team_size',
         'max_team_size',
-        'team_formation_deadline',
+        'project1_team_formation_deadline',
+        'supervisor_max_score',
+        'defense_max_score',
+        'passing_percentage',
     ];
 
     protected $casts = [
