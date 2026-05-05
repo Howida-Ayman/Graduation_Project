@@ -104,11 +104,14 @@ public function activeMembers()
     }
     // علاقة مباشرة مع milestones (through pivot)
     public function milestones()
-    {   
+{
     return $this->belongsToMany(Milestone::class, 'team_milestone_status')
-        ->withPivot(['status', 'milestone_grade', 'graded_by_user_id', 'graded_at'])
+        ->withPivot([
+            'status',
+            'updated_at',
+        ])
         ->withTimestamps();
-    }
+}
         //  لجنة المايلستون (واحدة بس)
     public function milestoneCommittee()
     {
@@ -171,6 +174,14 @@ public function getAllUsers()
     );
     
     return User::whereIn('id', $userIds)->get();
+}
+public function supervisorGrades()
+{
+    return $this->hasMany(SupervisorGrade::class);
+}
+public function supervisorGrade()
+{
+    return $this->hasOne(SupervisorGrade::class);
 }
 
 }

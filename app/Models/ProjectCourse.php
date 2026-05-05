@@ -30,4 +30,8 @@ class ProjectCourse extends Model
     {
         return $this->hasMany(MilestoneCommitteeGrade::class);
     }
+    public function supervisorGrades()
+{
+    return $this->hasMany(SupervisorGrade::class);
+}
 }

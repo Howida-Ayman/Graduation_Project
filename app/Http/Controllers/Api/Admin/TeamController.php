@@ -6,50 +6,72 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Department;
 use App\Models\Milestone;
+use App\Models\ProjectCourse;
 use App\Models\Team;
 use App\Models\TeamMilestonStatus;
 use App\Models\User;
+use App\Services\TeamDetailsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use App\Services\TeamDetailsService;
 
 class TeamController extends Controller
 {
     public function allteams(Request $request)
     {
-         $today = Carbon::now();
+        $today = Carbon::now();
 
         $academicYear = AcademicYear::where('is_active', 1)->first();
 
         if (!$academicYear) {
             return response()->json([
-                'message' => 'No active academic year found'
+                'message' => 'No active academic year found.'
             ], 404);
         }
 
-        // تحديد الميلستون المختارة
+        $request->validate([
+            'project_course_id' => 'nullable|exists:project_courses,id',
+            'milestone_id' => 'nullable|exists:milestones,id',
+        ]);
+
+        $projectCourse = null;
+
+        if ($request->filled('project_course_id')) {
+            $projectCourse = ProjectCourse::find($request->project_course_id);
+        }
+
         if ($request->filled('milestone_id')) {
             $selectedMilestone = Milestone::find($request->milestone_id);
 
             if (!$selectedMilestone) {
                 return response()->json([
-                    'message' => 'Milestone not found'
+                    'message' => 'Milestone not found.'
                 ], 404);
             }
+
+            $projectCourse = $selectedMilestone->projectCourse;
         } else {
-            $selectedMilestone = Milestone::where('start_date', '<=', $today)
+            $milestoneQuery = Milestone::query();
+
+            if ($projectCourse) {
+                $milestoneQuery->where('project_course_id', $projectCourse->id);
+            }
+
+            $selectedMilestone = $milestoneQuery
+                ->where('start_date', '<=', $today)
                 ->where('deadline', '>=', $today)
                 ->orderBy('phase_number')
                 ->first();
 
             if (!$selectedMilestone) {
-                $selectedMilestone = Milestone::orderBy('phase_number')->first();
+                $selectedMilestone = $milestoneQuery
+                    ->orderBy('phase_number')
+                    ->first();
             }
         }
 
         if (!$selectedMilestone) {
             return response()->json([
-                'message' => 'No milestones found'
+                'message' => 'No milestones found.'
             ], 404);
         }
 
@@ -61,14 +83,12 @@ class TeamController extends Controller
         $isPastDeadline = Carbon::parse($selectedMilestone->deadline)->isPast() && !$isCurrentMilestone;
         $isFutureMilestone = Carbon::parse($selectedMilestone->start_date)->isFuture();
 
-        /**
-         * -----------------------------------
-         * 1) SUMMARY
-         * لا تتأثر بالفلاتر
-         * تتأثر فقط بالميلستون المختارة
-         * -----------------------------------
-         */
         $summaryTeams = Team::where('academic_year_id', $academicYear->id)
+            ->whereHas('members.user.enrollments', function ($q) use ($academicYear, $selectedMilestone) {
+                $q->where('academic_year_id', $academicYear->id)
+                    ->where('project_course_id', $selectedMilestone->project_course_id)
+                    ->where('status', 'in_progress');
+            })
             ->with([
                 'milestones' => function ($query) use ($selectedMilestone) {
                     $query->where('milestones.id', $selectedMilestone->id);
@@ -93,7 +113,8 @@ class TeamController extends Controller
             return $milestone && $milestone->pivot->status === 'delayed';
         })->count();
 
-        $previousMilestonesIds = Milestone::where('phase_number', '<', $selectedMilestone->phase_number)
+        $previousMilestonesIds = Milestone::where('project_course_id', $selectedMilestone->project_course_id)
+            ->where('phase_number', '<', $selectedMilestone->phase_number)
             ->pluck('id');
 
         $previousDelayedTotal = 0;
@@ -125,13 +146,12 @@ class TeamController extends Controller
             ];
         }
 
-        /**
-         * -----------------------------------
-         * 2) FILTERED DATA
-         * الداتا المعروضة فقط
-         * -----------------------------------
-         */
         $teamsQuery = Team::where('academic_year_id', $academicYear->id)
+            ->whereHas('members.user.enrollments', function ($q) use ($academicYear, $selectedMilestone) {
+                $q->where('academic_year_id', $academicYear->id)
+                    ->where('project_course_id', $selectedMilestone->project_course_id)
+                    ->where('status', 'in_progress');
+            })
             ->with([
                 'department',
                 'leader',
@@ -143,7 +163,6 @@ class TeamController extends Controller
                 },
             ]);
 
-        // Search: اسم المشروع أو اسم الطالب فقط
         if ($request->filled('search')) {
             $search = $request->search;
 
@@ -156,24 +175,22 @@ class TeamController extends Controller
             });
         }
 
-        // Department filter
         if ($request->filled('department_id')) {
             $teamsQuery->where('department_id', $request->department_id);
         }
 
-        // Doctor filter
         if ($request->filled('doctor_id')) {
-         $doctorId = $request->doctor_id;
+            $doctorId = $request->doctor_id;
 
-    $teamsQuery->whereHas('currentSupervisors', function ($q) use ($doctorId) {
-        $q->where('users.id', $doctorId)
-          ->where('team_supervisors.supervisor_role', 'doctor')
-          ->whereNull('team_supervisors.ended_at');
-    });
-}
+            $teamsQuery->whereHas('currentSupervisors', function ($q) use ($doctorId) {
+                $q->where('users.id', $doctorId)
+                    ->where('team_supervisors.supervisor_role', 'doctor')
+                    ->whereNull('team_supervisors.ended_at');
+            });
+        }
 
-        // Status filter حسب نوع الميلستون
         $allowedStatuses = [];
+
         if ($isCurrentMilestone) {
             $allowedStatuses = ['on_track', 'pending_submission'];
         } elseif ($isPastDeadline) {
@@ -187,7 +204,7 @@ class TeamController extends Controller
 
             $teamsQuery->whereHas('milestones', function ($q) use ($selectedMilestone, $status) {
                 $q->where('milestones.id', $selectedMilestone->id)
-                  ->where('team_milestone_status.status', $status);
+                    ->where('team_milestone_status.status', $status);
             });
         }
 
@@ -220,28 +237,18 @@ class TeamController extends Controller
                     'email' => $team->leader?->email,
                 ],
 
-                'members_count' => $team->members->count(),
-
-                'members' => $team->members->map(function ($member) {
-                    return [
-                        'id' => $member->student_user_id,
-                        'name' => $member->user?->full_name,
-                        'email' => $member->user?->email,
-                        'role_in_team' => $member->role_in_team,
-                        'image'=>$member->user?->profile_image_url,
-                    ];
-                })->values(),
+                'members_count' => $team->members->where('status', 'active')->count(),
 
                 'project' => [
-                    'title' => $proposal?->title,
-                    'description' => $proposal?->description,
-                    'problem_statement' => $proposal?->problem_statement,
-                    'solution' => $proposal?->solution,
-                    'image_url' => $project?->image_url ?? $proposal?->image_url,
-                    'files' => $proposal?->attachment_file,
-                    'technologies' => $proposal?->technologies,
-                    'category' => $proposal?->category,
-                ],
+                        'title' => $proposal?->title,
+                        'description' => $proposal?->description,
+                        'problem_statement' => $proposal?->problem_statement,
+                        'solution' => $proposal?->solution,
+                        'category' => $proposal?->category,
+                        'technologies' => $proposal?->technologies,
+                        'image_url' => $project?->image_url ?? $proposal?->image_url,
+                        'file_url' => $proposal?->attachment_file,
+                     ],
 
                 'supervisors' => [
                     'doctor' => $doctor ? [
@@ -259,6 +266,7 @@ class TeamController extends Controller
                 'selected_milestone' => [
                     'id' => $selectedMilestoneData?->id,
                     'title' => $selectedMilestoneData?->title,
+                    'project_course_id' => $selectedMilestoneData?->project_course_id,
                     'phase_number' => $selectedMilestoneData?->phase_number,
                     'deadline' => $selectedMilestoneData?->deadline,
                     'team_status' => $teamStatus,
@@ -266,46 +274,49 @@ class TeamController extends Controller
             ];
         });
 
-        // milestones dropdown
-        $milestones = Milestone::orderBy('phase_number')->get()->map(function ($milestone) use ($today) {
-            $isCurrent = $today->between(
-                Carbon::parse($milestone->start_date),
-                Carbon::parse($milestone->deadline)
-            );
+        $milestones = Milestone::where('project_course_id', $selectedMilestone->project_course_id)
+            ->orderBy('phase_number')
+            ->get()
+            ->map(function ($milestone) use ($today) {
+                $isCurrent = $today->between(
+                    Carbon::parse($milestone->start_date),
+                    Carbon::parse($milestone->deadline)
+                );
 
-            $isPast = Carbon::parse($milestone->deadline)->isPast() && !$isCurrent;
-            $isFuture = Carbon::parse($milestone->start_date)->isFuture();
+                $isPast = Carbon::parse($milestone->deadline)->isPast() && !$isCurrent;
+                $isFuture = Carbon::parse($milestone->start_date)->isFuture();
 
-            $statusOptions = [];
-            if ($isCurrent) {
-                $statusOptions = [
-                    ['value' => 'on_track', 'label' => 'On Track'],
-                    ['value' => 'pending_submission', 'label' => 'Pending Submission'],
+                $statusOptions = [];
+
+                if ($isCurrent) {
+                    $statusOptions = [
+                        ['value' => 'on_track', 'label' => 'On Track'],
+                        ['value' => 'pending_submission', 'label' => 'Pending Submission'],
+                    ];
+                } elseif ($isPast) {
+                    $statusOptions = [
+                        ['value' => 'on_track', 'label' => 'On Track'],
+                        ['value' => 'delayed', 'label' => 'Delayed'],
+                    ];
+                } elseif ($isFuture) {
+                    $statusOptions = [
+                        ['value' => 'pending_submission', 'label' => 'Pending Submission'],
+                    ];
+                }
+
+                return [
+                    'id' => $milestone->id,
+                    'project_course_id' => $milestone->project_course_id,
+                    'title' => $milestone->title,
+                    'phase_number' => $milestone->phase_number,
+                    'deadline' => $milestone->deadline,
+                    'is_current' => $isCurrent,
+                    'is_past_deadline' => $isPast,
+                    'is_future' => $isFuture,
+                    'status_filter_options' => $statusOptions,
                 ];
-            } elseif ($isPast) {
-                $statusOptions = [
-                    ['value' => 'on_track', 'label' => 'On Track'],
-                    ['value' => 'delayed', 'label' => 'Delayed'],
-                ];
-            } elseif ($isFuture) {
-                $statusOptions = [
-                    ['value' => 'pending_submission', 'label' => 'Pending Submission'],
-                ];
-            }
+            });
 
-            return [
-                'id' => $milestone->id,
-                'title' => $milestone->title,
-                'phase_number' => $milestone->phase_number,
-                'deadline' => $milestone->deadline,
-                'is_current' => $isCurrent,
-                'is_past_deadline' => $isPast,
-                'is_future' => $isFuture,
-                'status_filter_options' => $statusOptions,
-            ];
-        });
-
-        // status options للميلستون المختارة فقط
         if ($isCurrentMilestone) {
             $selectedMilestoneStatusOptions = [
                 ['value' => 'on_track', 'label' => 'On Track'],
@@ -323,17 +334,24 @@ class TeamController extends Controller
         }
 
         return response()->json([
-            'message' => 'Teams retrieved successfully',
+            'message' => 'Teams retrieved successfully.',
 
             'academic_year' => [
                 'id' => $academicYear->id,
                 'code' => $academicYear->code,
             ],
 
+            'selected_project_course' => [
+                'id' => $selectedMilestone->projectCourse?->id,
+                'name' => $selectedMilestone->projectCourse?->name,
+                'order' => $selectedMilestone->projectCourse?->order,
+            ],
+
             'milestones' => $milestones,
 
             'selected_milestone_info' => [
                 'id' => $selectedMilestone->id,
+                'project_course_id' => $selectedMilestone->project_course_id,
                 'title' => $selectedMilestone->title,
                 'phase_number' => $selectedMilestone->phase_number,
                 'start_date' => $selectedMilestone->start_date,
@@ -346,53 +364,51 @@ class TeamController extends Controller
                 'status_filter_options' => $selectedMilestoneStatusOptions,
             ],
 
-            // لا تتأثر بالفلاتر
             'summary' => $summary,
 
-            // الفلاتر المطبقة على الداتا فقط
             'applied_filters' => [
+                'project_course_id' => $selectedMilestone->project_course_id,
                 'search' => $request->search,
                 'department_id' => $request->department_id,
                 'status' => $request->status,
                 'doctor_id' => $request->doctor_id,
             ],
 
-            // options للفلاتر
             'filter_options' => [
+                'project_courses' => ProjectCourse::orderBy('order')->get(['id', 'name', 'order']),
                 'departments' => Department::where('is_active', 1)->get(['id', 'name']),
                 'doctors' => User::where('role_id', 2)->get(['id', 'full_name']),
             ],
 
             'data' => $formattedTeams->values(),
         ], 200);
-    
     }
 
+    public function viewTeam($teamId, TeamDetailsService $teamDetailsService)
+    {
+        $team = Team::with([
+            'department',
+            'leader',
+            'members.user',
+            'graduationProject.proposal',
+            'currentSupervisors',
+            'teamMilestonestatus',
+            'teamMilestonestatus.milestone.projectCourse',
+            'submissions.files',
+            'submissions.milestone.projectCourse',
+            'submissions.submitter',
+            'milestoneCommittee.members.user',
+        ])->find($teamId);
 
+        if (!$team) {
+            return response()->json([
+                'message' => 'Team not found.'
+            ], 404);
+        }
 
-public function viewTeam($teamId, TeamDetailsService $teamDetailsService)
-{
-    $team = Team::with([
-        'department',
-        'members.user',
-        'graduationProject.proposal',
-        'currentSupervisors',
-        'teamMilestonestatus',
-        'teamMilestonestatus.milestone',
-        'submissions.files',
-        'submissions.milestone',
-        'submissions.submitter',
-    ])->find($teamId);
-
-    if (! $team) {
-        return response()->json([
-            'message' => 'Team not found'
-        ], 404);
+        return response()->json(
+            $teamDetailsService->buildResponse($team),
+            200
+        );
     }
-
-    return response()->json(
-        $teamDetailsService->buildResponse($team),
-        200
-    );
-}
 }
