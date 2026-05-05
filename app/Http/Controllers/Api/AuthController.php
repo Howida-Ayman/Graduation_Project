@@ -18,13 +18,13 @@ class AuthController extends Controller
 
     if (!$user) {
         return response()->json([
-            'message' => 'Invalid credentials',
+            'message' => 'Invalid credentials.',
         ], 401);
     }
 
     if (!$user->is_active) {
         return response()->json([
-            'message' => 'Your account is not activated'
+            'message' => 'Your account is not activated.',
         ], 403);
     }
 
@@ -33,7 +33,7 @@ class AuthController extends Controller
         'password' => $request->password
     ])) {
         return response()->json([
-            'message' => 'Invalid credentials',
+            'message' => 'Invalid credentials.',
         ], 401);
     }
 
@@ -42,30 +42,50 @@ class AuthController extends Controller
 
     $activeAcademicYear = AcademicYear::where('is_active', true)->first();
 
-    $enrollment = null;
+    $project1Enrollment = null;
+    $project2Enrollment = null;
+    $currentEnrollment = null;
+    $currentProjectCourse = null;
+
     $membership = null;
     $hasTeam = false;
     $isLeader = false;
     $teamId = null;
 
-if (strtolower($user->role?->code ?? '') === 'student' && $activeAcademicYear) {
-    $enrollment = $user->enrollments()
-        ->where('academic_year_id', $activeAcademicYear->id)
-        ->first();
+    if (strtolower($user->role?->code ?? '') === 'student' && $activeAcademicYear) {
+        $enrollments = $user->enrollments()
+            ->with('projectCourse')
+            ->where('academic_year_id', $activeAcademicYear->id)
+            ->get();
 
-    $membership = TeamMembership::with('team')
-        ->where('student_user_id', $user->id)
-        ->where('academic_year_id', $activeAcademicYear->id)
-        ->where('status', 'active')
-        ->first();
+        $project1Enrollment = $enrollments->first(
+            fn ($e) => (int) $e->projectCourse?->order === 1
+        );
 
-    $hasTeam = !is_null($membership);
-    $teamId = $membership?->team_id;
+        $project2Enrollment = $enrollments->first(
+            fn ($e) => (int) $e->projectCourse?->order === 2
+        );
 
-    if ($hasTeam && $membership->team) {
-        $isLeader = ((int) $membership->team->leader_user_id === (int) $user->id);
+        $currentEnrollment = $enrollments
+            ->where('status', 'in_progress')
+            ->sortByDesc(fn ($e) => (int) $e->projectCourse?->order)
+            ->first();
+
+        $currentProjectCourse = $currentEnrollment?->projectCourse;
+
+        $membership = TeamMembership::with('team')
+            ->where('student_user_id', $user->id)
+            ->where('academic_year_id', $activeAcademicYear->id)
+            ->where('status', 'active')
+            ->first();
+
+        $hasTeam = !is_null($membership);
+        $teamId = $membership?->team_id;
+
+        if ($hasTeam && $membership->team) {
+            $isLeader = ((int) $membership->team->leader_user_id === (int) $user->id);
+        }
     }
-}
 
     $data = [
         'id' => $user->id,
@@ -78,18 +98,28 @@ if (strtolower($user->role?->code ?? '') === 'student' && $activeAcademicYear) {
         'profile_image_url' => $user->profile_image_url,
         'phone' => $user->phone,
         'is_active' => $user->is_active,
+
         'active_academic_year' => $activeAcademicYear ? [
             'id' => $activeAcademicYear->id,
             'code' => $activeAcademicYear->code,
         ] : null,
-        'enrollment_status' => $enrollment?->status,
+
+        'current_project_course' => $currentProjectCourse ? [
+            'id' => $currentProjectCourse->id,
+            'name' => $currentProjectCourse->name,
+            'order' => $currentProjectCourse->order,
+        ] : null,
+
+        'project1_status' => $project1Enrollment?->status,
+        'project2_status' => $project2Enrollment?->status,
+
         'has_team' => $hasTeam,
         'is_leader' => $isLeader,
         'team_id' => $teamId,
     ];
 
     return response()->json([
-        'message' => 'Login Successful',
+        'message' => 'Login successful.',
         'user' => $data,
         'token' => $token
     ], 200);

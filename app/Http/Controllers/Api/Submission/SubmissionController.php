@@ -234,7 +234,7 @@ class SubmissionController extends Controller
             ],
             [
                 'status' => $teamStatus,
-                'status_updated_at' => now(),
+                'updated_at' => now(),
             ]
         );
 

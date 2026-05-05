@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Api\Admin;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use App\Models\AcademicYear;
 use App\Models\Milestone;
 use App\Models\MilestoneCommittee;
@@ -13,15 +14,12 @@ use App\Models\Submission;
 use App\Models\Team;
 use App\Models\TeamSupervisor;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
 class MilestoneCommitteeController extends Controller
 {
     public function index()
 {
     $committees = MilestoneCommittee::with([
-            'team.leader',
             'team.members.user',
             'members.user',
         ])
@@ -39,8 +37,6 @@ class MilestoneCommitteeController extends Controller
 
                 'project_title' => $proposal?->title,
                 'project_category' => $proposal?->category,
-
-                'leader' => $committee->team?->leader?->full_name,
 
                 'doctors' => $committee->members
                     ->where('member_role', 'doctor')
@@ -80,7 +76,7 @@ class MilestoneCommitteeController extends Controller
             ], 404);
         }
 
-        $teams = Team::with(['leader', 'members.user'])
+        $teams = Team::with(['members.user'])
             ->where('academic_year_id', $academicYear->id)
             ->whereDoesntHave('milestoneCommittee')
             ->whereHas('members.user.enrollments', function ($q) use ($academicYear) {
@@ -98,8 +94,7 @@ class MilestoneCommitteeController extends Controller
                     ->first();
 
                 return [
-                    'id' => $team->id,
-                    'leader' => $team->leader?->full_name,
+                    'team_id' => $team->id,
                     'members_count' => $team->members->where('status', 'active')->count(),
                     'project_title' => $proposal?->title,
                     'project_category' => $proposal?->category,
@@ -235,11 +230,31 @@ class MilestoneCommitteeController extends Controller
                 ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Milestone committee created successfully.',
-                'data' => $committee->load('members.user')
-            ], 201);
+$committee = $committee->fresh()->load('members.user');
+
+$proposal = Proposal::where('team_id', $committee->team_id)
+    ->where('status', 'approved')
+    ->latest()
+    ->first();
+
+return response()->json([
+    'success' => true,
+    'message' => 'Milestone committee saved successfully.',
+    'data' => [
+        'id' => $committee->id,
+        'team_id' => $committee->team_id,
+        'project_title' => $proposal?->title,
+        'project_category' => $proposal?->category,
+
+        'members' => $committee->members->map(function ($member) {
+            return [
+                'id' => $member->user?->id,
+                'name' => $member->user?->full_name,
+                'role' => $member->member_role,
+            ];
+        })->values(),
+    ],
+], 201);
         });
     }
     public function update(Request $request, $id)
@@ -374,11 +389,31 @@ class MilestoneCommitteeController extends Controller
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Milestone committee updated successfully.',
-            'data' => $committee->fresh()->load(['team', 'members.user'])
-        ], 200);
+$committee = $committee->fresh()->load('members.user');
+
+$proposal = Proposal::where('team_id', $committee->team_id)
+    ->where('status', 'approved')
+    ->latest()
+    ->first();
+
+return response()->json([
+    'success' => true,
+    'message' => 'Milestone committee saved successfully.',
+    'data' => [
+        'id' => $committee->id,
+        'team_id' => $committee->team_id,
+        'project_title' => $proposal?->title,
+        'project_category' => $proposal?->category,
+
+        'members' => $committee->members->map(function ($member) {
+            return [
+                'id' => $member->user?->id,
+                'name' => $member->user?->full_name,
+                'role' => $member->member_role,
+            ];
+        })->values(),
+    ],
+], 200);
     });
 }
 
@@ -458,56 +493,97 @@ class MilestoneCommitteeController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Milestone grade submitted successfully.',
-                'data' => $grade->load(['milestone', 'team', 'gradedBy'])
-            ], 201);
+return response()->json([
+    'success' => true,
+    'message' => 'Milestone grade submitted successfully.',
+    'data' => [
+        'id' => $grade->id,
+        'team_id' => $grade->team_id,
+        'milestone_id' => $grade->milestone_id,
+        'project_course_id' => $grade->project_course_id,
+        'grade' => $grade->grade,
+        'graded_by' => [
+            'id' => $doctor->id,
+            'name' => $doctor->full_name,
+        ],
+        'graded_at' => $grade->graded_at,
+        'notes' => $grade->notes,
+    ]
+], 201);
         });
     }
 
-    public function updateGradeByAdmin(Request $request, $id)
-    {
-        $request->validate([
-            'grade' => 'required|numeric|min:0',
-            'notes' => 'nullable|string|max:1000',
-        ]);
+    public function saveGradeByAdmin(Request $request)
+{
+    $request->validate([
+        'team_id' => 'required|exists:teams,id',
+        'milestone_id' => 'required|exists:milestones,id',
+        'grade' => 'required|numeric|min:0',
+        'notes' => 'nullable|string|max:1000',
+    ]);
 
-        $admin = $request->user();
+    $admin = $request->user();
 
-        return DB::transaction(function () use ($request, $id, $admin) {
-            $grade = MilestoneCommitteeGrade::with('milestone')->findOrFail($id);
+    return DB::transaction(function () use ($request, $admin) {
+        $committee = MilestoneCommittee::where('team_id', $request->team_id)->first();
 
-            if ((float) $request->grade > (float) $grade->milestone->max_score) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Grade cannot exceed milestone max score ({$grade->milestone->max_score})."
-                ], 422);
-            }
+        if (!$committee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This team does not have a milestone committee.'
+            ], 404);
+        }
 
-            $hasSubmission = Submission::where('team_id', $grade->team_id)
-                ->where('milestone_id', $grade->milestone_id)
-                ->exists();
+        $milestone = Milestone::findOrFail($request->milestone_id);
 
-            if (!$hasSubmission) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot update grade because this team has no submission for this milestone.'
-                ], 422);
-            }
+        if ((float) $request->grade > (float) $milestone->max_score) {
+            return response()->json([
+                'success' => false,
+                'message' => "Grade cannot exceed milestone max score ({$milestone->max_score})."
+            ], 422);
+        }
 
-            $grade->update([
+        $hasSubmission = Submission::where('team_id', $request->team_id)
+            ->where('milestone_id', $request->milestone_id)
+            ->exists();
+
+        if (!$hasSubmission) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot grade this team because no submission was uploaded for this milestone.'
+            ], 422);
+        }
+
+        $grade = MilestoneCommitteeGrade::updateOrCreate(
+            [
+                'team_id' => $request->team_id,
+                'milestone_id' => $request->milestone_id,
+                'project_course_id' => $milestone->project_course_id,
+            ],
+            [
+                'committee_id' => $committee->id,
                 'grade' => $request->grade,
                 'graded_by_user_id' => $admin->id,
                 'graded_at' => now(),
                 'notes' => $request->notes,
-            ]);
+            ]
+        );
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Milestone grade updated successfully by admin.',
-                'data' => $grade->fresh()->load(['milestone', 'team', 'gradedBy'])
-            ], 200);
-        });
-    }
+        return response()->json([
+            'success' => true,
+            'message' => 'Milestone grade saved successfully by admin.',
+            'data' => [
+                'id' => $grade->id,
+                'team_id' => $grade->team_id,
+                'milestone_id' => $grade->milestone_id,
+                'project_course_id' => $grade->project_course_id,
+                'grade' => $grade->grade,
+                'graded_by_user_id' => $grade->graded_by_user_id,
+                'graded_at' => $grade->graded_at,
+                'notes' => $grade->notes,
+            ]
+        ], 200);
+    });
 }
+}
+

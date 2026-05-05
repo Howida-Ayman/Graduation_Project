@@ -11,6 +11,7 @@ use App\Models\TeamMembership;
 use App\Models\TeamSupervisor;
 use App\Models\DatabaseNotification;
 use App\Models\ProjectCourse;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -72,12 +73,41 @@ class ProposalController extends Controller
             ->where('status', 'active')
             ->first();
 
-        if (!$membership) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are not in any team.'
-            ], 403);
-        }
+$membership = TeamMembership::where('student_user_id', $user->id)
+    ->where('academic_year_id', $academicYear->id)
+    ->where('status', 'active')
+    ->first();
+
+if (!$membership) {
+    $minTeamSize = ProjectRule::getMinTeamSize();
+
+    if ($minTeamSize > 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'You are not in any team.'
+        ], 403);
+    }
+
+    $team = Team::create([
+        'academic_year_id' => $academicYear->id,
+        'department_id' => $user->studentprofile?->department_id,
+        'leader_user_id' => $user->id,
+    ]);
+
+    TeamMembership::create([
+        'team_id' => $team->id,
+        'academic_year_id' => $academicYear->id,
+        'student_user_id' => $user->id,
+        'role_in_team' => 'leader',
+        'status' => 'active',
+        'joined_at' => now(),
+    ]);
+
+    $membership = TeamMembership::where('student_user_id', $user->id)
+        ->where('academic_year_id', $academicYear->id)
+        ->where('status', 'active')
+        ->first();
+}
 
         $team = $membership->team;
 
