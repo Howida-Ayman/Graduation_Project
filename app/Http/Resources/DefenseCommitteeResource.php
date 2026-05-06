@@ -30,7 +30,7 @@ class DefenseCommitteeResource extends JsonResource
                     'name' => $d->member?->full_name,
                 ])->values(),
 
-            'assistant' => $this->members
+            'assistants' => $this->members
                 ->where('member_role', 'ta')
                 ->map(fn($d) => [
                     'id' => $d->member?->id,
