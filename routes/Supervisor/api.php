@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Supervisor\MeetingController;
 use App\Http\Controllers\Api\Supervisor\MilestoneManagementController;
 use App\Http\Controllers\Api\Supervisor\TeamManagementController;
 use App\Http\Controllers\Api\Supervisor\SupervisorMilestoneNoteController;
+use App\Http\Controllers\Api\MilestoneCommitteeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function()
@@ -43,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function()
              Route::put('/{id}', [MeetingController::class, 'update']);
              Route::delete('/{id}/delete', [MeetingController::class, 'destroy']);
             });
+
         });
     });
 
@@ -57,6 +59,9 @@ Route::middleware('auth:sanctum')->group(function()
             
             Route::get('{milestoneId}/note', [SupervisorMilestoneNoteController::class, 'show']);
             Route::post('{milestoneId}/note', [SupervisorMilestoneNoteController::class, 'storeOrUpdate']);
+
+           // Doctor only
+           Route::post('/milestone-committees/grades',[MilestoneCommitteeController::class, 'storeGrade']);
 
         });
     

@@ -225,12 +225,15 @@ class TeamDetailsService
                             ];
                         })->values(),
 
-                    'assistant' => optional(
-                        $defenseCommittee->members->firstWhere('member_role', 'ta')
-                    )->member ? [
-                        'id' => $defenseCommittee->members->firstWhere('member_role', 'ta')?->member?->id,
-                        'name' => $defenseCommittee->members->firstWhere('member_role', 'ta')?->member?->full_name,
-                    ] : null,
+                    'assistants' => $defenseCommittee->members
+                        ->where('member_role', 'ta')
+                        ->sortBy('seat_order')
+                        ->map(function ($member) {
+                            return [
+                                'id' => $member->member?->id,
+                                'name' => $member->member?->full_name,
+                            ];
+                        })->values(),
 
                     'grade' => $defenseCommittee->grade ? [
                         'id' => $defenseCommittee->grade->id,

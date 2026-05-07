@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Admin\ProposalController;
 use App\Http\Controllers\Api\Admin\StudentController;
 use App\Http\Controllers\Api\Admin\TAController;
 use App\Http\Controllers\Api\Admin\TeamController ;
+use App\Http\Controllers\Api\MilestoneCommitteeController;
 use App\Http\Controllers\Api\SuggestedProject\SuggestedProjectController;
 use App\Http\Controllers\Api\User\UserController;
 use Illuminate\Http\Request;
@@ -22,6 +23,9 @@ Route::get('/user', function (Request $request) {
 Route::middleware(['auth:sanctum','admin'])->group(function(){
 
 Route::prefix('admin')->group(function(){
+    //show ta / dr
+    Route::get('/staff/{id}', [DoctorController::class, 'showStaff'])
+    ->whereNumber('id');
     //import & export doctors
     Route::prefix('doctor')->group(function(){
     Route::get('/',[DoctorController::class,'index'])->name('doctor.index');
@@ -49,6 +53,7 @@ Route::prefix('admin')->group(function(){
     Route::post('/store',[StudentController::class,'store'])->name(name: 'student.store');
     Route::put('/{id}/update',[StudentController::class,'update'])->name('student.update'); 
     Route::post('/deactivate-all',[StudentController::class,'deactivateAllStudents']);
+    Route::get('/{id}', [StudentController::class, 'show'])->name('student.show');
     });
     //deactivate user(student or doctor or TA)
     Route::post('/{id}/user/toggle-status',[UserController::class,'toggleUserStatus']);
@@ -68,7 +73,8 @@ Route::prefix('admin')->group(function(){
 
     //team & project rules
     Route::prefix('project_rules')->group(function(){
-        Route::put('store/team rules',[ProjectRuleController::class,'UpdateTeamRules']);
+        Route::put('/team_rules',[ProjectRuleController::class,'UpdateTeamRules']);
+        Route::put('/grading', [ProjectRuleController::class, 'updateGradingRules']);
         Route::post('/{section}',[ProjectRuleController::class,'storeRule']);
         Route::delete('/{id}/delete',[ProjectRuleController::class,'deleteRule']);
     });
@@ -88,20 +94,31 @@ Route::prefix('admin')->group(function(){
         Route::put('/{id}/add/notes',[MilestoneController::class,'storeNote']);
     });
 
+        // milestone commiteess
+        Route::prefix('milestone-committees')->group(function () {
+        Route::get('/', [MilestoneCommitteeController::class, 'index']);
+        Route::get('/eligible-teams', [MilestoneCommitteeController::class, 'eligibleTeams']);
+        Route::get('/{teamId}/form-data', [MilestoneCommitteeController::class, 'formData']);
+        Route::post('/', [MilestoneCommitteeController::class, 'store']);
+        Route::post('/grades/admin-save', [MilestoneCommitteeController::class, 'saveGradeByAdmin']);
+        Route::put('/{id}/update', [MilestoneCommitteeController::class, 'update']);
+    });
+
     //teams
     Route::prefix('teams')->group(function(){
         Route::get('/{milestone_id?}',[TeamController::class,'allTeams']);
         Route::get('/view_team/{id}',[TeamController::class,'viewTeam']);
     });
     //final Discussion Commitee
-    Route::prefix('defense_committees')->group(function(){
-        Route::get('/projects', [DefenseCommitteeController::class, 'projects']);
-        Route::get('/committee-options', [DefenseCommitteeController::class, 'committeeOptions']);
-        Route::post('/', [DefenseCommitteeController::class, 'store']);
-        Route::get('/', [DefenseCommitteeController::class, 'index']);
-        Route::patch('/{id}', [DefenseCommitteeController::class, 'update']);
-        Route::delete('/{id}/delete', [DefenseCommitteeController::class, 'destroy']);
-    });
+    Route::prefix('defense-committees')->group(function () {
+       Route::get('/projects', [DefenseCommitteeController::class, 'projects']);
+       Route::get('/options', [DefenseCommitteeController::class, 'committeeOptions']);
+       Route::post('/', [DefenseCommitteeController::class, 'store']);
+       Route::get('/', [DefenseCommitteeController::class, 'index']);
+       Route::put('/{id}', [DefenseCommitteeController::class, 'update']);
+       Route::delete('/{id}', [DefenseCommitteeController::class, 'destroy']);
+
+});
 
     //proposal
     Route::put('/proposal/{id}/{status}',[ProposalController::class,'requestStatus']);
