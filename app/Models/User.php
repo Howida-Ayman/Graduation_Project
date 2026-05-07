@@ -292,6 +292,10 @@ public function isInProjectTwo()
         ->where('status', 'in_progress')
         ->exists();
 }
+public function fileFeedbacks()
+{
+    return $this->hasMany(SubmissionFile::class, 'feedback_by_user_id');
+}
 
 
 }

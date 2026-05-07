@@ -17,7 +17,7 @@ class ProjectRulesSeeder extends Seeder
             [
                 'min_team_size' => 4,
                 'max_team_size' => 6,
-                'team_formation_deadline' => now()->addWeeks(3)->toDateString(),
+                'project1_team_formation_deadline' => now()->addWeeks(3)->toDateString(),
             ]
         );
     }

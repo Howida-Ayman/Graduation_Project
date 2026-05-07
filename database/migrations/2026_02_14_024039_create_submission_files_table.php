@@ -18,7 +18,15 @@ return new class extends Migration
             $table->string('original_name')->nullable();
             $table->timestamp('uploaded_at')->nullable();
             $table->text('feedback')->nullable();
-            
+            $table->foreignId('feedback_by_user_id')
+            ->nullable()
+            ->constrained('users')
+            ->nullOnDelete()
+            ->cascadeOnUpdate();
+
+           $table->timestamp('feedback_at')
+            ->nullable();
+                        
             $table->timestamps();
 
             $table->index(['submission_id']);

@@ -15,6 +15,9 @@ class SubmissionFile extends Model
         'original_name',
         'uploaded_at',
         'feedback',
+        'feedback_by_user_id',
+        'feedback_at',
+
 
     ];
 
@@ -29,4 +32,8 @@ class SubmissionFile extends Model
     {
         return $this->belongsTo(Submission::class);
     }
+    public function feedbackBy()
+{
+    return $this->belongsTo(User::class, 'feedback_by_user_id');
+}
 }
