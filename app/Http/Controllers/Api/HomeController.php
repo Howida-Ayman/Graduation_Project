@@ -162,7 +162,6 @@ $lastMilestoneCommitteeNote = \App\Models\MilestoneCommitteeGrade::with([
     ])
     ->where('team_id', $team->id)
     ->whereNotNull('notes')
-    ->latest('graded_at')
     ->first();
 
 if ($lastMilestoneCommitteeNote) {
@@ -178,11 +177,6 @@ if ($lastMilestoneCommitteeNote) {
                 'order' => $lastMilestoneCommitteeNote->milestone?->projectCourse?->order,
             ],
         ],
-        'noted_by' => [
-            'id' => $lastMilestoneCommitteeNote->gradedBy?->id,
-            'name' => $lastMilestoneCommitteeNote->gradedBy?->full_name,
-        ],
-        'noted_at' => $lastMilestoneCommitteeNote->graded_at,
     ];
 }
 
