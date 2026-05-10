@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
             FavoritesSeeder::class,
             SubmissionsSeeder::class,
             CommitteesAndGradesSeeder::class,
+            NotificationSeeder::class,
 
         ]
         );
