@@ -1,17 +1,5 @@
 <?php
 
-namespace App\Http\Controllers\Api\Proposal;
-
-use App\Http\Controllers\Controller;
-use App\Models\AcademicYear;
-use App\Models\Department;
-use App\Models\ProjectType;
-use App\Models\TeamMembership;
-use Illuminate\Http\Request;
-
-class ProposalFormController extends Controller
-{
-    <?php
 
 namespace App\Http\Controllers\Api\Proposal;
 
@@ -138,5 +126,4 @@ class ProposalFormController extends Controller
             ]
         ], 200);
     }
-}
 }
