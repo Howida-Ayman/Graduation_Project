@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\Requests\Students\StudentsRequestsController;
 use App\Http\Controllers\Api\Requests\Supervisor\SupervisionRequestsController;
 use App\Http\Controllers\Api\TermsController;
 use App\Http\Controllers\Api\TimeLine\TimelineController;
+use App\Events\TestEvent;
+use App\Events\NewMessageEvent;
+use App\Models\Message;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -93,9 +96,9 @@ Route::get('/my-timeline/{id}', [TimelineController::class, 'show']);
 
     //chat
     Route::prefix('chat')->group(function () {
-        Route::get('/team', [ChatController::class, 'getTeamConversation']);
-        Route::get('/conversations/{conversation}/messages', [ChatController::class, 'getMessages']);
-        Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
+        Route::get('/conversations', [ChatController::class, 'getTeamConversation']);
+        // Route::get('/conversations/{conversation}/messages', [ChatController::class, 'getMessages']);
+        Route::post('/messages', [ChatController::class, 'sendMessage']);
         Route::put('/conversations/{conversation}/read', [ChatController::class, 'markAsRead']);
     });
     
@@ -104,6 +107,18 @@ Route::get('/my-timeline/{id}', [TimelineController::class, 'show']);
 });
 
 
+Route::get('/test-message', function () {
 
+    $message = \App\Models\Message::create([
+        'message' => 'Realtime test',
+        'type' => 'text',
+        'conversation_id' => 1,
+        'sender_user_id' => 1,
+    ]);
 
+    $message->load('sender');
 
+    event(new \App\Events\NewMessageEvent($message, 1));
+
+    return "sent";
+});

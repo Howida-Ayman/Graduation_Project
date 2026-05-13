@@ -515,6 +515,7 @@ class SupervisionRequestsController extends Controller
                 'assigned_at' => now(),
                 'ended_at' => null,
             ]);
+            \App\Services\ChatService::syncTeamChatParticipants($teamRequest->team);
 
             Request::where('academic_year_id', $academicYear->id)
                 ->where('team_id', $teamRequest->team_id)

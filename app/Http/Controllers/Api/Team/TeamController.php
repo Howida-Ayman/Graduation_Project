@@ -333,6 +333,7 @@ public function leave(Request $request)
             'status' => 'left',
             'left_at' => now(),
         ]);
+        \App\Services\ChatService::syncTeamChatParticipants($team);
 
         Request::where('academic_year_id', $academicYear->id)
             ->where('status', 'pending')

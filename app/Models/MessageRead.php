@@ -1,4 +1,3 @@
-// app/Models/MessageRead.php
 <?php
 
 namespace App\Models;

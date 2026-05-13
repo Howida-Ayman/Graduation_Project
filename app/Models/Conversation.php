@@ -1,4 +1,3 @@
-// app/Models/Conversation.php
 <?php
 
 namespace App\Models;

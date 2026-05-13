@@ -1,9 +1,9 @@
-// app/Services/ChatService.php
 <?php
 
 namespace App\Services;
 
 use App\Models\Conversation;
+use App\Models\ConversationParticipant;
 use App\Models\Team;
 use App\Models\User;
 
@@ -12,33 +12,37 @@ class ChatService
     /**
      * إنشاء شات جماعي للفريق تلقائياً
      */
-    public static function createTeamChat(Team $team)
-    {
-        // اسم الجروب
+ public static function createTeamChat(Team $team)
+{
+    try {
         $chatName = "فريق " . ($team->name ?? "Team #{$team->id}");
         
-        // إنشاء المحادثة
         $conversation = Conversation::create([
             'team_id' => $team->id,
             'name' => $chatName,
         ]);
         
-        // إضافة جميع المشاركين
         $allUsers = $team->getAllUsers();
         
         foreach ($allUsers as $user) {
-            $role = 'member';
+            $role = in_array($user->role?->code, ['doctor', 'TA', 'ta']) ? 'admin' : 'member';
             
-            // لو المستخدم دكتور أو معيد، يكون admin في الشات
-            if (in_array($user->role?->code, ['doctor', 'TA', 'ta'])) {
-                $role = 'admin';
-            }
-            
-            $conversation->addParticipant($user->id, $role);
+            ConversationParticipant::create([
+                'conversation_id' => $conversation->id,
+                'user_id' => $user->id,
+                'role' => $role,
+                'joined_at' => now(),
+                'left_at' => null,
+            ]);
         }
         
         return $conversation;
+        
+    } catch (\Exception $e) {
+        \Log::error('Chat creation failed: ' . $e->getMessage());
+        throw $e; // ← مهم عشان الـ transaction يعمل rollback
     }
+}
     
     /**
      * تحديث المشاركين في الشات (عند إضافة/إزالة عضو)
